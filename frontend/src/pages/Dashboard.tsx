@@ -133,7 +133,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-[rgba(255,79,216,0.02)] to-[rgba(0,0,0,0.3)]">
       {/* TOP BAR: Compact header + quick metrics */}
-      <div className="p-4 border-b border-[rgba(255,79,216,0.06)] bg-[rgba(5,5,10,0.85)]">
+      <div className="p-4 pl-14 lg:pl-4 border-b border-[rgba(255,79,216,0.06)] bg-[rgba(5,5,10,0.85)]">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-[#ff4fd8]" style={{ fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.1em' }}>

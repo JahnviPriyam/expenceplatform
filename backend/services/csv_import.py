@@ -23,6 +23,15 @@ CURRENCY_MAP = {
     '¥': 'JPY', 'jpy': 'JPY',
 }
 
+def _clean_val(val) -> str:
+    """Normalize NaN, None, and empty fields to empty string."""
+    if pd.isna(val) or val is None:
+        return ''
+    s = str(val).strip()
+    if s.lower() in ('nan', 'none', 'null', 'n/a'):
+        return ''
+    return s
+
 # Column aliases the CSV might use
 COLUMN_ALIASES = {
     'description': ['description', 'desc', 'name', 'expense', 'item', 'title', 'details'],
@@ -51,9 +60,9 @@ def _resolve_column(df_columns: List[str], field: str) -> str | None:
 
 def _parse_amount(raw) -> Tuple[Decimal | None, str | None]:
     """Extract numeric amount and optional embedded currency symbol."""
-    if pd.isna(raw) or raw == '':
+    s = _clean_val(raw)
+    if not s:
         return None, None
-    s = str(raw).strip()
     found_currency = None
     for sym, code in CURRENCY_MAP.items():
         if sym in s.lower():
@@ -117,7 +126,9 @@ def parse_csv(file_content: bytes) -> Dict[str, Any]:
 
     for idx, row in df.iterrows():
         try:
-            desc = str(row.get(col_map.get('description', 'description'), f'Row {idx + 1}')).strip()
+            desc = _clean_val(row.get(col_map.get('description', 'description'), f'Row {idx + 1}'))
+            if not desc:
+                desc = f'Row {idx + 1}'
 
             # Amount + embedded currency
             raw_amount = row.get(col_map.get('amount', 'amount'), None)
@@ -127,41 +138,67 @@ def parse_csv(file_content: bytes) -> Dict[str, Any]:
                 continue
 
             # Currency
-            raw_currency = str(row.get(col_map.get('currency', 'currency'), '')).strip()
+            raw_currency = _clean_val(row.get(col_map.get('currency', 'currency'), ''))
             currency_code = CURRENCY_MAP.get(raw_currency.lower(), raw_currency.upper() if raw_currency else '')
             if not currency_code or currency_code == 'UNKNOWN':
                 if embedded_currency:
                     currency_code = embedded_currency
                 # Infer later (two-pass needed; mark as blank for now)
 
-            # Date
+            # Date — try multiple formats, always emit YYYY-MM-DD or empty
             raw_date = row.get(col_map.get('date', 'date'), None)
+            parsed_date = ''
             try:
-                parsed_date = pd.to_datetime(raw_date).strftime('%Y-%m-%d')
+                raw_date_str = str(raw_date).strip() if raw_date is not None else ''
+                if not raw_date_str or raw_date_str.lower() in ('nan', 'none', 'null', 'n/a', ''):
+                    parsed_date = ''
+                else:
+                    # Try pandas with dayfirst=False first, then dayfirst=True
+                    # Also handles formats like "Mar-14", "14-Mar-2023", "2023/03/14", etc.
+                    for dayfirst in (False, True):
+                        try:
+                            parsed_date = pd.to_datetime(raw_date_str, dayfirst=dayfirst, infer_datetime_format=True).strftime('%Y-%m-%d')
+                            break
+                        except Exception:
+                            continue
+                    # If still empty, try explicit common formats
+                    if not parsed_date:
+                        for fmt in ('%d-%b-%y', '%b-%d', '%b-%Y', '%d/%m/%Y', '%m/%d/%Y',
+                                    '%d-%m-%Y', '%Y/%m/%d', '%B %d, %Y', '%d %b %Y'):
+                            try:
+                                import datetime as _dt
+                                dt = _dt.datetime.strptime(raw_date_str, fmt)
+                                # If year is only 2-digit style (like "Mar-14" → year 14 → assume 2014)
+                                if dt.year < 100:
+                                    dt = dt.replace(year=dt.year + 2000)
+                                parsed_date = dt.strftime('%Y-%m-%d')
+                                break
+                            except Exception:
+                                continue
             except Exception:
-                parsed_date = str(raw_date) if raw_date else ''
+                parsed_date = ''
 
             # Payer
-            payer = str(row.get(col_map.get('payer', 'payer'), '')).strip()
+            payer = _clean_val(row.get(col_map.get('payer', 'payer'), ''))
 
             # Category
-            category = str(row.get(col_map.get('category', 'category'), '')).strip()
+            category = _clean_val(row.get(col_map.get('category', 'category'), ''))
 
             # Notes
-            notes = str(row.get(col_map.get('notes', 'notes'), '')).strip()
+            notes = _clean_val(row.get(col_map.get('notes', 'notes'), ''))
 
             # Participants (best-effort JSON parse)
-            raw_participants = row.get(col_map.get('participants', 'participants'), '')
+            raw_participants = _clean_val(row.get(col_map.get('participants', 'participants'), ''))
             participants = []
-            if raw_participants and not pd.isna(raw_participants):
-                parts = str(raw_participants).split(';')
+            if raw_participants:
+                parts = raw_participants.split(';')
                 for p in parts:
                     p = p.strip()
                     if p:
                         participants.append({'name': p, 'share_amount': None, 'share_pct': None})
 
             # Split type
-            split_type = str(row.get(col_map.get('split_type', 'split_type'), 'equal')).strip().lower()
+            split_type = _clean_val(row.get(col_map.get('split_type', 'split_type'), 'equal')).lower()
             if split_type not in ('equal', 'percentage', 'exact'):
                 split_type = 'equal'
 

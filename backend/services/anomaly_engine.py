@@ -121,21 +121,22 @@ def _check_row(idx, row, seen_signatures, category_averages):
 
     # ── MISSING_CURRENCY ──────────────────────────────────────────────────
     currency = str(row.get('currency', '')).strip()
-    if not currency or currency.upper() in ('', 'UNKNOWN', 'N/A', 'NONE'):
+    is_inferred = row.get('currency_inferred', False)
+    if not currency or currency.upper() in ('', 'UNKNOWN', 'N/A', 'NONE', 'NAN', 'NULL') or is_inferred:
         found.append({
             'anomaly_type': 'MISSING_CURRENCY',
             'severity': 'HIGH',
             'description': (
                 f"'{desc}' has no currency value. "
-                f"The system will attempt to infer the currency from surrounding transactions. "
-                f"Manual verification is recommended before processing."
+                + (f"The system automatically inferred '{currency}' from surrounding transactions. " if is_inferred else "The system will attempt to infer the currency. ")
+                + "Manual verification is recommended before processing."
             ),
             'row_index': idx,
         })
 
     # ── MISSING_PAYER ──────────────────────────────────────────────────────
     payer = str(row.get('payer', '')).strip()
-    if not payer or payer.lower() in ('', 'unknown', 'n/a', 'none'):
+    if not payer or payer.lower() in ('', 'unknown', 'n/a', 'none', 'nan', 'null'):
         found.append({
             'anomaly_type': 'MISSING_PAYER',
             'severity': 'HIGH',
@@ -155,7 +156,7 @@ def _check_row(idx, row, seen_signatures, category_averages):
             split_type = str(row.get('split_type', 'equal')).lower()
 
             if split_type == 'percentage':
-                total_pct = sum(float(p.get('share_pct', 0)) for p in participants)
+                total_pct = sum(float(p.get('share_pct') or 0) for p in participants)
                 if abs(total_pct - 100.0) > 0.5:
                     over = round(total_pct - 100.0, 2)
                     over_amount = round((over / 100.0) * total_amount, 2)
@@ -172,7 +173,7 @@ def _check_row(idx, row, seen_signatures, category_averages):
                     })
 
             elif split_type == 'exact':
-                total_shares = sum(float(p.get('share_amount', 0)) for p in participants)
+                total_shares = sum(float(p.get('share_amount') or 0) for p in participants)
                 if abs(total_shares - total_amount) > 0.01:
                     diff = round(total_shares - total_amount, 2)
                     found.append({

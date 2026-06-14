@@ -61,7 +61,7 @@ export default function Anomalies() {
   return (
     <div className="min-h-screen p-6">
       {/* Page Header */}
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-5">
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-5 pl-12 lg:pl-0">
         <h1 className="title-page text-[#ff4fd8]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
           ⚡ AUDIT WORKBENCH
         </h1>

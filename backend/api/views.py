@@ -91,36 +91,53 @@ def import_csv(request):
     # Save expenses
     saved_expenses = []
     for row in expense_rows:
-        exp = Expense.objects.create(
-            user=request.user,
-            import_batch=batch,
-            description=row['description'],
-            amount=Decimal(row['amount']),
-            currency=row['currency'],
-            currency_inferred=row.get('currency_inferred', False),
-            date=row['date'] or '2000-01-01',
-            category=row.get('category', ''),
-            payer=row.get('payer', ''),
-            participants=row.get('participants', []),
-            split_type=row.get('split_type', 'equal'),
-            notes=row.get('notes', ''),
-            is_settlement=False,
-            raw_row=row.get('raw_row', {}),
-        )
-        saved_expenses.append(exp)
+        # Sanitise date — if still not ISO format, fall back to a safe default
+        raw_date = row.get('date', '') or ''
+        if raw_date:
+            import re as _re
+            if not _re.match(r'^\d{4}-\d{2}-\d{2}$', raw_date):
+                raw_date = '2000-01-01'
+        safe_date = raw_date or '2000-01-01'
+        try:
+            exp = Expense.objects.create(
+                user=request.user,
+                import_batch=batch,
+                description=row['description'],
+                amount=Decimal(row['amount']),
+                currency=row['currency'],
+                currency_inferred=row.get('currency_inferred', False),
+                date=safe_date,
+                category=row.get('category', ''),
+                payer=row.get('payer', ''),
+                participants=row.get('participants', []),
+                split_type=row.get('split_type', 'equal'),
+                notes=row.get('notes', ''),
+                is_settlement=False,
+                raw_row=row.get('raw_row', {}),
+            )
+            saved_expenses.append(exp)
+        except Exception as save_err:
+            # Log but don't abort the entire import
+            actions_taken.append(f"Row skipped (save error): {str(save_err)[:80]}")
 
     # Save settlements
     for row in settlement_rows:
-        Settlement.objects.create(
-            user=request.user,
-            import_batch=batch,
-            from_participant=row.get('payer', ''),
-            to_participant='',
-            amount=Decimal(row['amount']),
-            currency=row['currency'],
-            date=row['date'] or '2000-01-01',
-            notes=row.get('notes', ''),
-        )
+        s_date = row.get('date', '') or ''
+        if s_date and not __import__('re').match(r'^\d{4}-\d{2}-\d{2}$', s_date):
+            s_date = '2000-01-01'
+        try:
+            Settlement.objects.create(
+                user=request.user,
+                import_batch=batch,
+                from_participant=row.get('payer', ''),
+                to_participant='',
+                amount=Decimal(row['amount']),
+                currency=row['currency'],
+                date=s_date or '2000-01-01',
+                notes=row.get('notes', ''),
+            )
+        except Exception:
+            pass
 
     # Save anomalies
     anomaly_index = {i: exp for i, exp in enumerate(saved_expenses)}

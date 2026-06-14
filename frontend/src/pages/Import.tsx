@@ -87,7 +87,7 @@ export default function Import() {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-[rgba(255,79,216,0.03)] to-[rgba(0,0,0,0.5)]">
       {/* HEADER BAR */}
-      <div className="p-3 border-b border-[rgba(255,79,216,0.06)] bg-[rgba(5,5,10,0.8)]">
+      <div className="p-3 pl-14 lg:pl-3 border-b border-[rgba(255,79,216,0.06)] bg-[rgba(5,5,10,0.8)]">
         <h1 className="text-xl font-bold text-[#ff4fd8]" style={{ fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.1em' }}>
           📤 IMPORT WORKFLOW
         </h1>

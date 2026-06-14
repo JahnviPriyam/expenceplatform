@@ -6,6 +6,9 @@ import Dashboard from './pages/Dashboard';
 import Import from './pages/Import';
 import Anomalies from './pages/Anomalies';
 import Reports from './pages/Reports';
+import Expenses from './pages/Expenses';
+import AIInsights from './pages/AIInsights';
+import Settings from './pages/Settings';
 import Layout from './components/Layout';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -30,6 +33,9 @@ function AppRoutes() {
         <Route path="/import" element={<Import />} />
         <Route path="/anomalies" element={<Anomalies />} />
         <Route path="/reports" element={<Reports />} />
+        <Route path="/expenses" element={<Expenses />} />
+        <Route path="/ai-insights" element={<AIInsights />} />
+        <Route path="/settings" element={<Settings />} />
       </Route>
       <Route path="/" element={<Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />

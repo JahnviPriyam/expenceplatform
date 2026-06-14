@@ -30,12 +30,22 @@ class AnomalySerializer(serializers.ModelSerializer):
 
 class ExpenseSerializer(serializers.ModelSerializer):
     anomalies = AnomalySerializer(many=True, read_only=True)
-    anomaly_count = serializers.IntegerField(source='anomalies.count', read_only=True)
+    anomaly_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Expense
         fields = '__all__'
         read_only_fields = ['user', 'created_at']
+
+    def get_anomaly_count(self, obj):
+        if hasattr(obj, 'anomalies'):
+            if hasattr(obj.anomalies, 'all') and hasattr(obj, '_prefetched_objects_cache') and 'anomalies' in obj._prefetched_objects_cache:
+                return len(obj.anomalies.all())
+            elif hasattr(obj.anomalies, 'count'):
+                return obj.anomalies.count()
+            elif hasattr(obj.anomalies, '__len__'):
+                return len(obj.anomalies)
+        return 0
 
 
 class ImportBatchSerializer(serializers.ModelSerializer):
@@ -47,12 +57,12 @@ class ImportBatchSerializer(serializers.ModelSerializer):
         read_only_fields = ['user', 'created_at']
 
     def get_anomaly_breakdown(self, obj):
-        anomalies = obj.anomalies.all()
+        anomalies = list(obj.anomalies.all())
         return {
-            'CRITICAL': anomalies.filter(severity='CRITICAL').count(),
-            'HIGH': anomalies.filter(severity='HIGH').count(),
-            'MEDIUM': anomalies.filter(severity='MEDIUM').count(),
-            'LOW': anomalies.filter(severity='LOW').count(),
+            'CRITICAL': sum(1 for a in anomalies if a.severity == 'CRITICAL'),
+            'HIGH': sum(1 for a in anomalies if a.severity == 'HIGH'),
+            'MEDIUM': sum(1 for a in anomalies if a.severity == 'MEDIUM'),
+            'LOW': sum(1 for a in anomalies if a.severity == 'LOW'),
         }
 
 
