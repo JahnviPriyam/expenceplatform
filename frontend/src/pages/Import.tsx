@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Upload, AlertCircle, ChevronRight, Zap } from 'lucide-react';
+import { Upload, AlertCircle, Zap, CheckCircle } from 'lucide-react';
 import api from '../lib/api';
 import HolographicPanel from '../components/HolographicPanel';
 
@@ -16,7 +16,7 @@ export default function Import() {
 
   const [progress, setProgress] = useState(0);
   const [logs, setLogs] = useState<string[]>([]);
-  const [issuesCounter, setIssuesCounter] = useState(0);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   async function processFile(file: File) {
     if (!file.name.endsWith('.csv')) {
@@ -27,7 +27,7 @@ export default function Import() {
     setError('');
     setResult(null);
     setProgress(0);
-    setIssuesCounter(0);
+    setUploadedFile(file);
     setLogs(['[SYSTEM] Initializing CSV file ingestion chamber...']);
 
     setUploadState('uploading');
@@ -36,24 +36,19 @@ export default function Import() {
     formData.append('file', file);
 
     try {
-      // In-flight progress simulation
       let currentProgress = 0;
       const progressInterval = setInterval(() => {
         currentProgress = Math.min(currentProgress + 8, 92);
         setProgress(currentProgress);
 
-        // Append log messages dynamically based on progress
         if (currentProgress >= 20 && currentProgress < 40 && logs.length === 1) {
           setLogs(prev => [...prev, `[PARSER] Parsing file ${file.name} via Pandas...`, '[PARSER] Schema mapped successfully.']);
         } else if (currentProgress >= 40 && currentProgress < 60 && logs.length === 3) {
           setLogs(prev => [...prev, '[ANOMALY] Running 9 rule-based detectors...', '[ANOMALY] Scanning for duplicate signatures...']);
-          setIssuesCounter(2);
         } else if (currentProgress >= 60 && currentProgress < 80 && logs.length === 5) {
           setLogs(prev => [...prev, '[ANOMALY] Analyzing percentage splits...', '[INTEGRITY] Computing score penalties...']);
-          setIssuesCounter(7);
         } else if (currentProgress >= 80 && logs.length === 7) {
           setLogs(prev => [...prev, '[DATABASE] Syncing telemetry core...', '[DATABASE] Writing records to PostgreSQL...']);
-          setIssuesCounter(10);
         }
       }, 300);
 
@@ -64,7 +59,7 @@ export default function Import() {
       clearInterval(progressInterval);
       setProgress(100);
       setLogs(prev => [...prev, '[DATABASE] Transaction committed. Ingestion successful.']);
-      setIssuesCounter(data.critical_issues + data.warnings);
+      // update result counts (displayed below)
       setUploadState('done');
       setResult(data);
     } catch (e: any) {
@@ -90,279 +85,220 @@ export default function Import() {
   const isProcessing = ['uploading', 'parsing', 'detecting', 'scoring'].includes(uploadState);
 
   return (
-    <div className="min-h-screen p-6">
-      {/* Page Header */}
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-        <h1 className="title-page text-[#ff4fd8]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-          CSV IMPORT MODULE
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[rgba(255,79,216,0.03)] to-[rgba(0,0,0,0.5)]">
+      {/* HEADER BAR */}
+      <div className="p-3 border-b border-[rgba(255,79,216,0.06)] bg-[rgba(5,5,10,0.8)]">
+        <h1 className="text-xl font-bold text-[#ff4fd8]" style={{ fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.1em' }}>
+          📤 IMPORT WORKFLOW
         </h1>
-        <p className="text-xs mt-1 text-[#64748b]">
-          Ingest Shared Expense records, parse schema structures, and execute audit rules
-        </p>
-      </motion.div>
+        <p className="text-xs text-[#64748b] mt-1">Step 1: Upload · Step 2: Parse · Step 3: Detect · Step 4: Compute · Step 5: Archive</p>
+      </div>
 
-      <div className="grid grid-cols-12 gap-6">
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-4 p-4 overflow-y-auto">
+        
+        {/* LEFT PIPELINE TRACKER (4 cols) */}
+        <div className="md:col-span-4 flex flex-col gap-4">
+          <HolographicPanel className="p-4" glowColor="#ff4fd8">
+            <span className="text-[10px] font-bold text-[#ff4fd8] tracking-widest block mb-4 uppercase" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+              Pipeline Ingestion Stages
+            </span>
+            <div className="relative pl-6 space-y-5">
+              {/* Vertical timeline line */}
+              <div className="absolute left-[9px] top-2 bottom-2 w-[1px] bg-[rgba(255,79,216,0.15)]" />
 
-        {/* Left Column: Import Zone or Post-Upload Summary (7 cols) */}
-        <div className="col-span-7">
-          {uploadState === 'done' && result ? (
-            <motion.div key="done-summary" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-              <HolographicPanel id="panel-import-summary" glowColor="#ff4fd8" className="p-5">
-                <div className="title-section text-[#ff4fd8] mb-4" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                  INGESTION SUCCESS SUMMARY
-                </div>
+              {[
+                { label: 'Upload Expense CSV', desc: 'Drag file into drop zone', check: () => uploadState !== 'idle' && uploadState !== 'dragging' },
+                { label: 'Parse Columns Schema', desc: 'Validate description, amount, payer', check: () => ['parsing', 'detecting', 'scoring', 'done'].includes(uploadState) },
+                { label: 'Run Anomaly Detectors', desc: 'Scan duplicates & splitting errors', check: () => ['detecting', 'scoring', 'done'].includes(uploadState) },
+                { label: 'Compute Integrity Grade', desc: 'Penalties accounting & scores', check: () => ['scoring', 'done'].includes(uploadState) },
+                { label: 'Commit Ingestion Run', desc: 'Write verified rows to DB core', check: () => uploadState === 'done' },
+              ].map((step, idx) => {
+                const isDone = step.check();
+                const isCurrent = !isDone && (
+                  (idx === 0 && ['idle', 'dragging', 'uploading'].includes(uploadState)) ||
+                  (idx === 1 && uploadState === 'parsing') ||
+                  (idx === 2 && uploadState === 'detecting') ||
+                  (idx === 3 && uploadState === 'scoring') ||
+                  (idx === 4 && uploadState === 'error')
+                );
+                
+                const dotColor = isDone ? '#00ff88' : isCurrent ? '#ff4fd8' : '#334155';
+                const shadow = isCurrent ? '0 0 8px #ff4fd8' : 'none';
 
-                {/* Grid stats */}
-                <div className="grid grid-cols-4 gap-4 mb-5">
-                  {[
-                    { label: 'TOTAL CSV RECORDS', value: result.total_records, color: '#b84dff' },
-                    { label: 'IMPORTED SUCCESSFULLY', value: result.records_imported, color: '#00ff88' },
-                    { label: 'CRITICAL ISSUES', value: result.critical_issues, color: '#ff3d3d' },
-                    { label: 'WARNINGS GENERATED', value: result.warnings, color: '#ff8c00' },
-                  ].map(({ label, value, color }) => (
-                    <div key={label} className="glass-panel p-3 text-center" style={{ background: 'rgba(0,0,0,0.2)' }}>
-                      <div className="text-[10px] font-semibold text-[#64748b] tracking-wider mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>{label}</div>
-                      <div className="text-xl font-bold" style={{ color }}>{value}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Score & Grade Row */}
-                <div className="grid grid-cols-3 gap-4 mb-5 border-t border-[rgba(255,79,216,0.08)] pt-4">
-                  <div className="glass-panel p-3.5 flex items-center justify-between" style={{ background: 'rgba(0,0,0,0.2)' }}>
+                return (
+                  <div key={idx} className="relative flex items-start gap-3">
+                    <div 
+                      className="absolute -left-[22px] top-1.5 w-[9px] h-[9px] rounded-full transition-all"
+                      style={{ background: dotColor, boxShadow: shadow }}
+                    />
                     <div>
-                      <div className="text-[9px] font-bold text-[#64748b]" style={{ fontFamily: 'Orbitron, sans-serif' }}>INTEGRITY INDEX</div>
-                      <div className="text-lg font-bold text-[#ff4fd8] mt-0.5" style={{ fontFamily: 'Orbitron, sans-serif' }}>{result.integrity_score?.toFixed(1)} / 100</div>
+                      <div className="text-[10px] font-bold" style={{ color: isDone ? '#00ff88' : isCurrent ? '#ff4fd8' : '#64748b', fontFamily: 'Orbitron, sans-serif' }}>
+                        {step.label}
+                      </div>
+                      <p className="text-[8px] text-[#64748b] mt-0.5">{step.desc}</p>
                     </div>
                   </div>
-                  <div className="glass-panel p-3.5 flex items-center justify-between" style={{ background: 'rgba(0,0,0,0.2)' }}>
-                    <div>
-                      <div className="text-[9px] font-bold text-[#64748b]" style={{ fontFamily: 'Orbitron, sans-serif' }}>RESULTING GRADE</div>
-                      <div className="text-lg font-bold text-[#b84dff] mt-0.5" style={{ fontFamily: 'Orbitron, sans-serif' }}>GRADE {result.grade}</div>
-                    </div>
-                  </div>
-                  <div className="glass-panel p-3.5 flex items-center justify-between" style={{ background: 'rgba(0,0,0,0.2)' }}>
-                    <div>
-                      <div className="text-[9px] font-bold text-[#64748b]" style={{ fontFamily: 'Orbitron, sans-serif' }}>STATUS</div>
-                      <div className="text-lg font-bold text-[#00ff88] mt-0.5" style={{ fontFamily: 'Orbitron, sans-serif' }}>INGESTED</div>
-                    </div>
-                  </div>
-                </div>
+                );
+              })}
+            </div>
+          </HolographicPanel>
 
-                {/* Actions Log */}
-                {result.actions_taken?.length > 0 && (
-                  <div className="border-t border-[rgba(255,79,216,0.08)] pt-4 mb-4">
-                    <span className="text-[10px] font-bold text-[#64748b] tracking-wider mb-2 block" style={{ fontFamily: 'Orbitron, sans-serif' }}>INGESTION ACTIONS RECORDED</span>
-                    <div className="space-y-1.5 max-h-24 overflow-y-auto">
-                      {result.actions_taken.map((action: string, i: number) => (
-                        <div key={i} className="flex items-start gap-2 text-[11px] text-[#94a3b8]">
-                          <ChevronRight size={11} className="mt-0.5 text-[#ff4fd8] shrink-0" />
-                          <span>{action}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+          {/* Guidelines Card in Left Column */}
+          <HolographicPanel className="p-4 flex-1">
+            <span className="text-[9px] font-bold text-[#ff4fd8] uppercase tracking-wider block mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+              CSV Specifications
+            </span>
+            <div className="space-y-3 text-[9px] text-[#64748b]">
+              <div>
+                <span className="font-bold text-[#e2e8f0] block">Required Fields</span>
+                <span className="text-[8px] text-[#94a3b8]">description, amount, payer</span>
+              </div>
+              <div>
+                <span className="font-bold text-[#e2e8f0] block">Optional Fields</span>
+                <span className="text-[8px] text-[#94a3b8]">currency, date, category</span>
+              </div>
+              <div className="pt-2 border-t border-[rgba(255,79,216,0.08)]">
+                <span className="text-[8px] block">⚠️ UTF-8 comma separated, maximum size 10MB</span>
+              </div>
+            </div>
+          </HolographicPanel>
+        </div>
 
-                <div className="flex gap-3 mt-5">
-                  <button onClick={() => navigate('/anomalies')} className="flex-1 btn-primary py-2.5 rounded-xl text-xs font-bold" style={{ color: 'white', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.08em' }}>
-                    REVIEW ANOMALIES LEDGER
-                  </button>
-                  <button onClick={() => { setUploadState('idle'); setResult(null); }} className="py-2.5 px-5 rounded-xl text-xs font-bold transition-all"
-                    style={{ border: '1px solid rgba(255,79,216,0.15)', color: '#64748b' }}>
-                    IMPORT ANOTHER FILE
-                  </button>
-                </div>
-              </HolographicPanel>
-            </motion.div>
-          ) : (
-            <motion.div
-              className={`energy-chamber rounded-2xl relative overflow-hidden cursor-pointer min-h-[420px] flex flex-col items-center justify-center p-12 ${uploadState === 'dragging' ? 'dragging' : ''}`}
+        {/* RIGHT ACTION CHAMBER (8 cols) */}
+        <div className="md:col-span-8 flex flex-col gap-4">
+          <HolographicPanel
+            noPad
+            className={`relative overflow-hidden flex flex-col items-center justify-center p-8 flex-1 transition-all ${uploadState === 'dragging' ? 'scale-[0.99]' : ''}`}
+            id="drop-zone"
+            glowColor={uploadState === 'done' ? '#00ff88' : uploadState === 'error' ? '#ff3d3d' : '#ff4fd8'}
+          >
+            <div
+              className="absolute inset-0 flex flex-col items-center justify-center p-6 cursor-pointer"
               onDrop={handleDrop}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onClick={() => uploadState === 'idle' && fileRef.current?.click()}
-              id="drop-zone"
             >
               <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFileInput} id="file-input" />
-
-              {/* Sparks */}
-              {['top-2 left-2', 'top-2 right-2', 'bottom-2 left-2', 'bottom-2 right-2'].map((pos, i) => (
-                <motion.div key={i} className={`absolute ${pos} w-4 h-4`}
-                  animate={{ opacity: [0.4, 1, 0.4] }}
-                  transition={{ duration: 1.5, delay: i * 0.3, repeat: Infinity }}>
-                  <Zap size={14} style={{ color: '#ff4fd8' }} />
-                </motion.div>
-              ))}
-
+              
               <AnimatePresence mode="wait">
                 {uploadState === 'idle' && (
                   <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-center">
                     <motion.div
-                      animate={{ y: [0, -10, 0] }}
-                      transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                      className="mb-6 mx-auto w-20 h-20 rounded-2xl flex items-center justify-center"
-                      style={{ background: 'rgba(255,79,216,0.06)', border: '1px solid rgba(255,79,216,0.15)' }}>
-                      <Upload size={32} style={{ color: '#ff4fd8' }} />
+                      animate={{ y: [0, -8, 0] }}
+                      transition={{ duration: 3, repeat: Infinity }}
+                      className="mb-4 mx-auto w-20 h-20 rounded-2xl flex items-center justify-center"
+                      style={{ background: 'rgba(255,79,216,0.06)', border: '2px solid rgba(255,79,216,0.15)' }}>
+                      <Upload size={36} style={{ color: '#ff4fd8' }} />
                     </motion.div>
-                    <div className="text-lg font-bold mb-2" style={{ color: '#e2e8f0', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.08em' }}>
-                      QUANTUM INTAKE CHAMBER
+                    <div className="text-xl font-bold mb-1" style={{ color: '#e2e8f0', fontFamily: 'Orbitron, sans-serif' }}>
+                      DRAG & DROP CSV FILE HERE
                     </div>
-                    <p className="text-sm mb-1" style={{ color: '#64748b' }}>Drag & drop your CSV file here</p>
-                    <p className="text-xs" style={{ color: '#475569' }}>or click to select a file</p>
-                    <div className="mt-6 text-[10px] px-4 py-2 rounded-full inline-block"
-                      style={{ background: 'rgba(255,79,216,0.04)', border: '1px solid rgba(255,79,216,0.1)', color: '#64748b' }}>
-                      Supported: .csv · Max 10MB
+                    <p className="text-xs text-[#94a3b8] mb-4">or click to browse local files · Max 10MB</p>
+                    <div className="inline-flex gap-2 bg-[rgba(255,79,216,0.04)] px-3 py-1.5 rounded-lg border border-[rgba(255,79,216,0.1)] text-[9px] text-[#ff4fd8] font-bold" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                      📋 Required: description, amount, payer
                     </div>
                   </motion.div>
                 )}
 
                 {uploadState === 'dragging' && (
-                  <motion.div key="dragging" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }} className="text-center">
+                  <motion.div key="dragging" initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="text-center pointer-events-none">
                     <motion.div
-                      animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}
+                      animate={{ scale: [1, 1.12, 1] }}
                       transition={{ duration: 0.6, repeat: Infinity }}
                       className="mb-4 mx-auto w-20 h-20 rounded-2xl flex items-center justify-center"
                       style={{ background: 'rgba(255,79,216,0.15)', border: '2px solid rgba(255,79,216,0.5)' }}>
-                      <Zap size={32} style={{ color: '#ff4fd8' }} />
+                      <Zap size={36} style={{ color: '#ff4fd8' }} />
                     </motion.div>
-                    <div className="text-lg font-bold text-glow-cyan" style={{ color: '#ff4fd8', fontFamily: 'Orbitron, sans-serif' }}>
-                      RELEASE TO ABSORB
+                    <div className="text-lg font-bold text-[#ff4fd8]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                      ⚡ INGEST CSV DATA STREAM
                     </div>
                   </motion.div>
                 )}
 
                 {isProcessing && (
-                  <motion.div key="processing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full max-w-md text-center">
-                    <div className="mb-4 text-xs font-semibold text-[#ff4fd8]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                      INGESTING FILE... {progress}%
+                  <motion.div key="processing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-lg text-center">
+                    <div className="mb-4 text-[10px] font-bold text-[#ff4fd8] uppercase tracking-wider" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                      Ingestion Process Status: {progress}%
                     </div>
                     
                     {/* Progress Bar */}
-                    <div className="w-full h-1.5 rounded-full bg-[rgba(255,79,216,0.1)] mb-6 overflow-hidden">
-                      <motion.div
-                        className="h-full bg-gradient-to-r from-[#b84dff] to-[#ff4fd8]"
-                        animate={{ width: `${progress}%` }}
-                        transition={{ duration: 0.2 }}
-                      />
+                    <div className="w-full h-1.5 rounded-full bg-[rgba(255,79,216,0.1)] mb-5 overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-[#b84dff] via-[#ff4fd8] to-[#00ff88]" style={{ width: `${progress}%`, transition: 'width 0.15s ease-out' }} />
                     </div>
 
-                    {/* Timeline Tracker */}
-                    <div className="flex gap-3 justify-center mb-6">
-                      {['parsing', 'detecting', 'scoring'].map((step, i) => {
-                        const states = ['uploading', 'parsing', 'detecting', 'scoring'];
-                        const stepIndex = states.indexOf(uploadState);
-                        const isDone = stepIndex > i + 1;
-                        const isCurrent = stepIndex === i + 1;
-                        return (
-                          <div key={step} className="flex flex-col items-center gap-1">
-                            <div className="w-2.5 h-2.5 rounded-full"
-                              style={{
-                                background: isDone ? '#00ff88' : isCurrent ? '#ff4fd8' : 'rgba(255,79,216,0.15)',
-                                boxShadow: isCurrent ? '0 0 8px #ff4fd8' : 'none',
-                              }}
-                            />
-                            <span className="text-[8px]" style={{ color: isDone || isCurrent ? '#ff4fd8' : '#475569', fontFamily: 'Orbitron, sans-serif' }}>
-                              {step.toUpperCase()}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Log Terminal Feed */}
-                    <div className="glass-panel p-3 text-left font-mono text-[9px] text-[#64748b] h-32 overflow-y-auto" style={{ background: 'rgba(5,6,15,0.95)', border: '1px solid rgba(255,79,216,0.1)' }}>
+                    {/* Console Log */}
+                    <div className="p-3 text-left font-mono text-[9px] text-[#64748b] max-h-40 overflow-y-auto w-full rounded border border-[rgba(255,79,216,0.1)] bg-[rgba(4,4,8,0.98)]">
                       {logs.map((log, idx) => (
-                        <div key={idx} className="mb-0.5">{log}</div>
+                        <div key={idx} className="mb-0.5 text-[#94a3b8]">
+                          <span style={{ color: '#00ff88' }}>›</span> {log}
+                        </div>
                       ))}
                     </div>
+                  </motion.div>
+                )}
 
-                    {/* Detected Issues scanner */}
-                    <div className="mt-4 flex items-center justify-center gap-2 text-[10px] text-[#64748b]">
-                      <AlertCircle size={11} className="text-[#ff8c00]" />
-                      <span>Anomalies Flagged: <strong className="text-[#ff8c00] font-bold">{issuesCounter}</strong></span>
+                {uploadState === 'done' && (
+                  <motion.div key="done" initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center w-full max-w-xl">
+                    <div className="mb-3 mx-auto w-16 h-16 rounded-full flex items-center justify-center"
+                      style={{ background: 'rgba(0,255,136,0.1)', border: '2px solid rgba(0,255,136,0.3)' }}>
+                      <CheckCircle size={32} style={{ color: '#00ff88' }} />
+                    </div>
+                    <div className="text-lg font-bold mb-1" style={{ color: '#00ff88', fontFamily: 'Orbitron, sans-serif' }}>
+                      CSV INGESTION RUN COMPLETED
+                    </div>
+                    <p className="text-xs text-[#64748b] mb-5">
+                      Successfully processed <span className="text-[#f8fafc] font-semibold">{uploadedFile?.name}</span>.
+                    </p>
+
+                    {/* Results Dashboard */}
+                    {result && (
+                      <div className="grid grid-cols-5 gap-2 mb-6 text-left">
+                        {[
+                          { l: 'PARSED', v: result.total_records, c: '#b84dff' },
+                          { l: 'VALID', v: result.records_imported, c: '#00ff88' },
+                          { l: 'ANOMALIES', v: result.critical_issues + result.warnings, c: '#ff8c00' },
+                          { l: 'CRITICAL', v: result.critical_issues, c: '#ff3d3d' },
+                          { l: 'SCORE', v: `${result.integrity_score?.toFixed(0)}%`, c: '#ff4fd8' },
+                        ].map(({ l, v, c }) => (
+                          <div key={l} className="p-2 text-center rounded bg-[rgba(0,0,0,0.25)] border border-[rgba(255,79,216,0.06)]">
+                            <div className="text-[8px] font-bold text-[#64748b]" style={{ fontFamily: 'Orbitron, sans-serif' }}>{l}</div>
+                            <div className="text-sm font-bold mt-0.5" style={{ color: c }}>{v}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 justify-center">
+                      <button onClick={() => navigate('/anomalies')} className="px-4 py-2 rounded text-xs font-bold text-white transition-all btn-primary" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                        VERIFY ANOMALIES →
+                      </button>
+                      <button onClick={() => navigate('/reports')} className="px-4 py-2 rounded text-xs font-bold transition-all border border-[rgba(255,79,216,0.25)] text-[#ff4fd8] hover:bg-[rgba(255,79,216,0.05)]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                        VIEW REPORT
+                      </button>
+                      <button onClick={() => { setUploadState('idle'); setResult(null); setUploadedFile(null); }} className="px-4 py-2 rounded text-xs font-bold transition-all border border-[rgba(255,79,216,0.15)] text-[#64748b] hover:text-[#e2e8f0]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                        RESET
+                      </button>
                     </div>
                   </motion.div>
                 )}
 
                 {uploadState === 'error' && (
-                  <motion.div key="error" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center">
-                    <div className="mb-4 mx-auto w-20 h-20 rounded-full flex items-center justify-center"
-                      style={{ background: 'rgba(255,61,61,0.1)', border: '2px solid rgba(255,61,61,0.4)' }}>
+                  <motion.div key="error" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center">
+                    <div className="mb-4 mx-auto w-16 h-16 rounded-full flex items-center justify-center"
+                      style={{ background: 'rgba(255,61,61,0.1)', border: '2px solid rgba(255,61,61,0.3)' }}>
                       <AlertCircle size={32} style={{ color: '#ff3d3d' }} />
                     </div>
-                    <div className="text-lg font-bold mb-2" style={{ color: '#ff6b6b', fontFamily: 'Orbitron, sans-serif' }}>
-                      IMPORT FAILED
+                    <div className="text-lg font-bold mb-1" style={{ color: '#ff3d3d', fontFamily: 'Orbitron, sans-serif' }}>
+                      INGESTION RUN REJECTED
                     </div>
-                    <p className="text-sm mb-4" style={{ color: '#475569' }}>{error}</p>
-                    <button onClick={() => setUploadState('idle')} className="btn-primary px-4 py-2 rounded-xl text-xs font-bold" style={{ color: 'white' }}>
-                      TRY AGAIN
+                    <p className="text-xs text-[#ff8c00] mb-5">{error}</p>
+                    <button onClick={() => setUploadState('idle')} className="px-5 py-2 rounded text-xs font-bold text-white" style={{ background: '#ff3d3d', fontFamily: 'Orbitron, sans-serif' }}>
+                      RE-INITIATE RUN
                     </button>
                   </motion.div>
                 )}
               </AnimatePresence>
-            </motion.div>
-          )}
-        </div>
-
-        {/* Right Column: Schema specifications & Details (5 cols) */}
-        <div className="col-span-5 flex flex-col gap-5">
-          <HolographicPanel id="panel-csv-guide" className="p-4">
-            <div className="title-section text-[#ff4fd8] mb-3" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-              EXPECTED CSV FORMAT
-            </div>
-            <div className="rounded-xl overflow-hidden border border-[rgba(255,79,216,0.08)]">
-              <table className="w-full text-[10px]">
-                <thead>
-                  <tr style={{ background: 'rgba(255,79,216,0.05)' }}>
-                    {['description', 'amount', 'currency', 'date', 'payer', 'category'].map(h => (
-                      <th key={h} className="px-2 py-2 text-left font-bold" style={{ color: '#ff4fd8', fontFamily: 'Orbitron, sans-serif' }}>
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    ['Pizza Friday', '1200', 'INR', '2024-06-01', 'Alice', 'Food'],
-                    ['Cab Ride', '350', '', '2024-06-02', 'Bob', 'Travel'],
-                    ['Hotel Stay', '8500', 'INR', '2024-06-03', 'Alice', 'Stay'],
-                  ].map((row, i) => (
-                    <tr key={i} style={{ borderTop: '1px solid rgba(255,79,216,0.06)' }}>
-                      {row.map((cell, j) => (
-                        <td key={j} className="px-2 py-1.5" style={{ color: cell ? '#64748b' : '#ff8c00' }}>
-                          {cell || '(missing)'}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="text-[10px] mt-2.5 text-[#64748b]">
-              Optional columns: participants, split_type, notes. Missing currencies will be inferred from context.
-            </p>
-          </HolographicPanel>
-
-          <HolographicPanel id="panel-what-happens" className="p-4">
-            <div className="title-section text-[#ff4fd8] mb-3" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-              WHAT HAPPENS ON UPLOAD
-            </div>
-            <div className="space-y-3 text-[11px]">
-              {[
-                { step: '01', label: 'Parse & Normalize', desc: 'Pandas service resolves columns and infers currencies from adjacent rows.', color: '#ff4fd8' },
-                { step: '02', label: 'Anomaly Detection', desc: 'Checks duplicate groups, split sums, payer presence, and dates.', color: '#b84dff' },
-                { step: '03', label: 'Integrity Scoring', desc: 'Calculates penalties dynamically. Mutates the Quantum Core visual orbit.', color: '#ff6ec7' },
-                { step: '04', label: 'Persist database records', desc: 'Commits entities (batch, anomalies, expenses) to PostgreSQL.', color: '#00ff88' },
-              ].map(({ step, label, desc, color }) => (
-                <div key={step} className="flex gap-3">
-                  <div className="font-bold text-xs shrink-0 mt-0.5" style={{ color, fontFamily: 'Orbitron, sans-serif' }}>{step}</div>
-                  <div>
-                    <div className="font-semibold text-[#e2e8f0]">{label}</div>
-                    <div className="text-[#64748b] mt-0.5">{desc}</div>
-                  </div>
-                </div>
-              ))}
             </div>
           </HolographicPanel>
         </div>

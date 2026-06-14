@@ -96,10 +96,12 @@ def _check_row(idx, row, seen_signatures, category_averages):
     desc = row.get('description', f'Row {idx + 1}')
 
     # ── DUPLICATE_EXPENSE ──────────────────────────────────────────────────
+    currency_val = str(row.get('currency', '')).upper().strip()
     sig = (
         str(row.get('amount', '')),
         str(row.get('date', '')),
         str(row.get('payer', '')).lower().strip(),
+        currency_val,
     )
     if sig in seen_signatures and sig[0] != '':
         found.append({

@@ -1,14 +1,12 @@
 import { useMemo } from 'react';
-import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
-  Upload, AlertTriangle, ArrowRight, Shield, CheckCircle, Cpu, Calendar,
-  Zap, FileText
+  AlertTriangle, CheckCircle, Zap
 } from 'lucide-react';
-import { ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import QuantumCore from '../components/QuantumCore';
 import HolographicPanel from '../components/HolographicPanel';
-import { useDashboardStats, useExpenses, useAnomalies } from '../hooks/useData';
+import { useDashboardStats, useExpenses } from '../hooks/useData';
 import type { CoreMetrics, CoreState } from '../types';
 
 function deriveCoreMetrics(stats: ReturnType<typeof useDashboardStats>['stats']): CoreMetrics {
@@ -40,7 +38,6 @@ const SEVERITY_COLORS: Record<string, string> = {
 export default function Dashboard() {
   const { stats, loading: statsLoading } = useDashboardStats();
   const { expenses } = useExpenses();
-  const { anomalies } = useAnomalies();
 
   const coreMetrics = useMemo(() => deriveCoreMetrics(stats), [stats]);
 
@@ -51,19 +48,7 @@ export default function Dashboard() {
   const defaultAnomalies = stats?.total_anomalies ?? 20;
   const defaultCritical = stats?.critical_anomalies ?? 1;
 
-  // Chart 1: Spend Overview Line Area Chart
-  const spendChartData = useMemo(() => {
-    return [
-      { name: '01 Jun', val: 50000 },
-      { name: '03 Jun', val: 75000 },
-      { name: '05 Jun', val: 68000 },
-      { name: '07 Jun', val: 92000 },
-      { name: '09 Jun', val: 110000 },
-      { name: '11 Jun', val: 105000 },
-      { name: '13 Jun', val: 125000 },
-      { name: '14 Jun', val: defaultSpend },
-    ];
-  }, [defaultSpend]);
+
 
   // Chart 2: Top Categories doughnut data
   const categoryPieData = useMemo(() => {
@@ -104,7 +89,7 @@ export default function Dashboard() {
     ];
   }, [expenses]);
 
-  const totalMerchantSpend = useMemo(() => topMerchants.reduce((sum, m) => sum + m.total, 0), [topMerchants]);
+
 
   // Currency Distribution Doughnut data
   const currencyPieData = useMemo(() => {
@@ -136,21 +121,6 @@ export default function Dashboard() {
     ];
   }, [stats]);
 
-  const totalAnomCount = useMemo(() => anomalyPieData.reduce((sum, item) => sum + item.value, 0), [anomalyPieData]);
-
-  // Recent Anomalies entries
-  const recentAnomaliesList = useMemo(() => {
-    if (anomalies && anomalies.length > 0) {
-      return anomalies.slice(0, 5);
-    }
-    return [
-      { id: 15, severity: 'CRITICAL', anomaly_type: 'DUPLICATE_EXPENSE', expense_description: 'Duplicate Expense - Marina Bites', expense_amount: '2850', expense: 15 },
-      { id: 23, severity: 'HIGH',     anomaly_type: 'DUPLICATE_EXPENSE', expense_description: 'Duplicate Expense - Marina Bites', expense_amount: '2850', expense: 23 },
-      { id: 31, severity: 'HIGH',     anomaly_type: 'MISSING_CURRENCY',  expense_description: 'Missing Currency - Hotel Stay',  expense_amount: '8500', expense: 31 },
-      { id: 37, severity: 'MEDIUM',   anomaly_type: 'INVALID_SPLIT',      expense_description: 'Invalid Split - Travel Expense',   expense_amount: '1200', expense: 37 },
-      { id: 40, severity: 'LOW',      anomaly_type: 'MISSING_PAYER',      expense_description: 'Missing Notes - Groceries DMart',  expense_amount: '2105', expense: 40 },
-    ];
-  }, [anomalies]);
 
   if (statsLoading) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -161,394 +131,215 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="min-h-screen p-6">
-      {/* Dashboard Title Header */}
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6 flex justify-between items-center">
-        <div>
-          <h1 className="title-page text-[#ff4fd8]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-            DASHBOARD
-          </h1>
-          <p className="text-xs mt-1 text-[#64748b]">
-            Executive overview & visual telemetry
-          </p>
-        </div>
-        
-        {/* Last Ingestion information in Header */}
-        <div className="glass-panel px-4 py-2 flex items-center gap-4 text-[10px] text-[#64748b]" style={{ background: 'rgba(0,0,0,0.2)', borderColor: 'rgba(255, 79, 216, 0.05)' }}>
-          <span className="flex items-center gap-1.5">
-            <Calendar size={11} className="text-[#b84dff]" />
-            LAST IMPORT: {stats?.latest_import ? new Date(stats.latest_import.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '14 Jun 2026, 16:10'}
-          </span>
-          <div className="h-3 w-px bg-[rgba(255,79,216,0.15)]" />
-          <span className="font-mono">
-            File: {stats?.latest_import?.filename ?? 'expenses.csv'} (3.2 MB)
-          </span>
-        </div>
-      </motion.div>
-
-      {/* Top Metrics Row (5 Cards) - 50% Reduced height: h-12 */}
-      <div className="grid grid-cols-5 gap-4 mb-5">
-        {[
-          { label: 'TOTAL RECORDS', value: defaultTotalRecords, sub: 'All rows in CSV', icon: FileText, color: '#b84dff' },
-          { label: 'IMPORTED SUCCESSFULLY', value: defaultImported, sub: '100% imported', icon: CheckCircle, color: '#00ff88' },
-          { label: 'ANOMALIES FOUND', value: defaultAnomalies, sub: `${((defaultAnomalies / Math.max(1, defaultTotalRecords)) * 100).toFixed(1)}% of rows`, icon: AlertTriangle, color: '#ff8c00' },
-          { label: 'CRITICAL ISSUES', value: defaultCritical, sub: 'Immediate action', icon: Shield, color: '#ff3d3d' },
-          { label: 'DATA INTEGRITY', value: `${coreMetrics.integrity_score.toFixed(0)}%`, sub: 'Quality index', grade: coreMetrics.grade, icon: Zap, color: '#ff4fd8' },
-        ].map(({ label, value, icon: Icon, color, grade }) => (
-          <HolographicPanel key={label} noPad className="px-3.5 py-2 flex items-center justify-between h-12" glowColor={`${color}20`}>
-            <div className="flex flex-col justify-center">
-              <div className="text-[8px] font-bold text-[#64748b] tracking-wider" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                {label}
-              </div>
-              <div className="text-sm font-bold text-[#f8fafc] mt-0.5" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                {value}
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[rgba(255,79,216,0.02)] to-[rgba(0,0,0,0.3)]">
+      {/* TOP BAR: Compact header + quick metrics */}
+      <div className="p-4 border-b border-[rgba(255,79,216,0.06)] bg-[rgba(5,5,10,0.85)]">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-[#ff4fd8]" style={{ fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.1em' }}>
+              ⚡ MISSION CONTROL
+            </h1>
+            <p className="text-xs text-[#64748b] mt-1">Real-time intelligence core | {stats?.total_expenses ?? 0} records | {coreMetrics.integrity_score.toFixed(0)}% integrity</p>
+          </div>
+          <div className="flex gap-4 items-center">
+            <div className="text-right">
+              <div className="text-[10px] text-[#64748b]">INTEGRITY STATUS</div>
+              <div className="text-sm font-bold" style={{ color: coreMetrics.integrity_score < 70 ? '#ff3d3d' : '#00ff88', fontFamily: 'Orbitron, sans-serif' }}>
+                {coreMetrics.integrity_score < 70 ? 'CRITICAL' : 'PRISTINE'}
               </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Icon size={12} style={{ color }} />
-              {grade && (
-                <span className="text-[8px] font-bold px-1 py-0.5 rounded" style={{ background: `${color}15`, border: `1px solid ${color}30`, color, fontFamily: 'Orbitron, sans-serif' }}>
-                  {grade}
-                </span>
-              )}
-            </div>
-          </HolographicPanel>
-        ))}
-      </div>
-
-      {/* 3-Column Dashboard Body */}
-      <div className="grid gap-5 mb-5" style={{ display: 'grid', gridTemplateColumns: '320px 1fr 360px' }}>
-        
-        {/* Left Column (320px) */}
-        <div className="flex flex-col gap-4">
-          {/* Spend Overview */}
-          <HolographicPanel id="panel-spend" className="p-4 flex flex-col h-[180px] justify-between">
-            <div className="flex justify-between items-start">
-              <div>
-                <div className="text-[10px] font-bold text-[#64748b] tracking-wider mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>SPEND OVERVIEW</div>
-                <div className="text-xl font-bold text-[#f8fafc]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                  ₹ {defaultSpend.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-                <div className="text-[9px] text-[#64748b] mt-0.5 flex items-center gap-1">
-                  <span className="text-[#00ff88] font-semibold">↑ 12.4%</span> vs last import ₹ {(defaultSpend * 0.89).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                </div>
-              </div>
-            </div>
-            <div className="h-16 mt-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={spendChartData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                  <defs>
-                    <linearGradient id="colorSpend" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ff4fd8" stopOpacity={0.25}/>
-                      <stop offset="95%" stopColor="#b84dff" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <Area type="monotone" dataKey="val" stroke="#ff4fd8" fillOpacity={1} fill="url(#colorSpend)" strokeWidth={1.5} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </HolographicPanel>
-
-          {/* Top Categories */}
-          <HolographicPanel id="panel-top-categories" className="p-4 flex flex-col h-[180px] justify-between">
-            <div className="text-[10px] font-bold text-[#64748b] tracking-wider mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>TOP CATEGORIES</div>
-            <div className="flex items-center gap-4">
-              <ResponsiveContainer width={80} height={80}>
-                <PieChart>
-                  <Pie data={categoryPieData} cx="50%" cy="50%" innerRadius={18} outerRadius={30} dataKey="value" stroke="none">
-                    {categoryPieData.map((_, i) => <Cell key={i} fill={CAT_COLORS[i % 5]} />)}
-                  </Pie>
-                  <Tooltip formatter={(v: any) => `₹ ${parseFloat(v).toLocaleString()}`} contentStyle={{ background: '#0d0f1f', border: '1px solid rgba(255,79,216,0.2)', borderRadius: 8, fontSize: 10 }} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="space-y-1 flex-1">
-                {categoryPieData.map((d, i) => {
-                  const total = categoryPieData.reduce((sum, item) => sum + item.value, 0);
-                  const pct = ((d.value / total) * 100).toFixed(1);
-                  return (
-                    <div key={d.name} className="flex items-center justify-between text-[10px]">
-                      <div className="flex items-center gap-1.5 truncate max-w-[70%]">
-                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: CAT_COLORS[i % 5] }} />
-                        <span className="text-[#94a3b8] truncate">{d.name}</span>
-                      </div>
-                      <span className="font-bold text-[#e2e8f0] font-mono">{pct}%</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </HolographicPanel>
-
-          {/* Top Merchants */}
-          <HolographicPanel id="panel-top-merchants" className="p-4 flex flex-col h-[180px] justify-between">
-            <div className="text-[10px] font-bold text-[#64748b] tracking-wider mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>TOP MERCHANTS</div>
-            <div className="space-y-2">
-              {topMerchants.map((m) => {
-                const pct = totalMerchantSpend > 0 ? (m.total / totalMerchantSpend) * 100 : 0;
-                return (
-                  <div key={m.name} className="space-y-0.5">
-                    <div className="flex justify-between text-[9px] font-medium text-[#94a3b8]">
-                      <span>{m.name}</span>
-                      <span className="font-mono text-[#e2e8f0]">₹ {m.total.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
-                    </div>
-                    <div className="w-full h-1 bg-[rgba(255,255,255,0.03)] rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: '#ff4fd8' }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </HolographicPanel>
-        </div>
-
-        {/* Center Column (1fr) - Dominant Hero Core, Banner, and Recent Anomalies */}
-        <div className="flex flex-col gap-4">
-          {/* Hero Quantum Core visualizer - height h-[580px] taking at least 60% of dashboard visible area */}
-          <HolographicPanel noPad className="relative overflow-hidden h-[580px]" id="panel-core">
-            <div className="absolute top-4 left-4 z-20 pointer-events-none">
-              <div className="text-[10px] font-bold text-[#ff4fd8] tracking-widest uppercase" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                QUANTUM DATA CORE <span className="ml-2 px-1.5 py-0.5 rounded bg-[rgba(255,79,216,0.15)] text-[8px] text-[#ff4fd8] font-bold">LIVE</span>
-              </div>
-              <div className="text-[10px] text-[#64748b] mt-0.5">Real-time data integrity visualization</div>
-            </div>
-
-            {/* Canvas - No flanking panels! */}
-            <QuantumCore metrics={coreMetrics} className="w-full h-full" />
-          </HolographicPanel>
-
-          {/* Integrity Status Banner */}
-          <div className="glass-panel p-3.5 flex items-center justify-between border"
-            style={{
-              background: coreMetrics.integrity_score < 70 ? 'rgba(255,61,61,0.05)' : 'rgba(0,255,136,0.05)',
-              borderColor: coreMetrics.integrity_score < 70 ? 'rgba(255,61,61,0.2)' : 'rgba(0,255,136,0.2)'
-            }}
-          >
-            <div className="flex items-center gap-3">
-              <Shield size={16} className={coreMetrics.integrity_score < 70 ? 'text-[#ff3d3d]' : 'text-[#00ff88]'} />
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider animate-pulse"
-                  style={{
-                    color: coreMetrics.integrity_score < 70 ? '#ff3d3d' : '#00ff88',
-                    fontFamily: 'Orbitron, sans-serif'
-                  }}
-                >
-                  INTEGRITY STATUS: {coreMetrics.integrity_score < 70 ? 'CRITICAL' : 'PRISTINE'}
-                </div>
-                <div className="text-[10px] text-[#64748b] mt-0.5">
-                  {coreMetrics.integrity_score < 70
-                    ? 'High number of anomalies detected. Review and resolve issues.'
-                    : 'No critical anomalies detected. System status pristine.'}
-                </div>
+            <div className="text-right">
+              <div className="text-[10px] text-[#64748b]">ANOMALIES</div>
+              <div className="text-sm font-bold text-[#ff8c00]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                {defaultAnomalies}
               </div>
             </div>
           </div>
+        </div>
+      </div>
 
-          {/* Recent Anomalies Ledger (Moved here from bottom) */}
-          <HolographicPanel id="panel-recent-anoms" className="p-4 flex flex-col h-[200px] justify-between">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-[10px] font-bold text-[#ff4fd8] tracking-wider" style={{ fontFamily: 'Orbitron, sans-serif' }}>RECENT ANOMALIES</span>
-              <Link to="/anomalies" className="text-[9px] text-[#ff4fd8] hover:text-[#ff6ec7] font-bold flex items-center gap-1">
-                View All <ArrowRight size={9} />
-              </Link>
+      {/* KPI PANEL: Unified horizontal banner */}
+      <div className="px-4 pt-4">
+        <HolographicPanel className="p-3.5" glowColor="rgba(255,79,216,0.08)">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 divide-y md:divide-y-0 md:divide-x divide-[rgba(255,79,216,0.12)]">
+            {[
+              { label: 'RECORDS INGESTED', value: defaultTotalRecords, icon: CheckCircle, color: '#ff4fd8' },
+              { label: 'VALID ENTRIES', value: defaultImported, icon: CheckCircle, color: '#00ff88' },
+              { label: 'TOTAL ANOMALIES', value: defaultAnomalies, icon: AlertTriangle, color: '#ff8c00' },
+              { label: 'CRITICAL ISSUES', value: defaultCritical, icon: AlertTriangle, color: '#ff3d3d' },
+              { label: 'QUALITY GRADE', value: coreMetrics.grade, icon: Zap, color: '#ff4fd8' },
+              { label: 'ESTIMATED SPEND', value: `₹${(defaultSpend/100000).toFixed(1)}L`, icon: Zap, color: '#b84dff' },
+            ].map(({ label, value, icon: Icon, color }, idx) => (
+              <div key={label} className={`flex flex-col justify-between items-center text-center ${idx > 0 ? 'pt-2 md:pt-0 md:pl-2' : ''}`}>
+                <span className="text-[8px] font-bold text-[#64748b] tracking-wider" style={{ fontFamily: 'Orbitron, sans-serif' }}>{label}</span>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <Icon size={11} style={{ color }} />
+                  <span className="text-sm font-extrabold text-[#f8fafc]" style={{ fontFamily: 'Orbitron, sans-serif' }}>{value}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </HolographicPanel>
+      </div>
+
+      {/* MAIN CONTENT: 2-column layout - Center console + Sidebar analytics */}
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-4 p-4">
+        
+        {/* CENTER CONSOLE: Quantum Core & System Logs (8 cols) */}
+        <div className="md:col-span-8 flex flex-col gap-4">
+          <HolographicPanel noPad className="relative overflow-hidden flex flex-col justify-between flex-1" id="panel-core" style={{ minHeight: '520px' }}>
+            <div className="absolute top-3 left-4 z-20 pointer-events-none">
+              <div className="text-[11px] font-bold text-[#ff4fd8] tracking-widest" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                QUANTUM INTEGRITY CORE <span className="ml-1 px-1 py-0.5 rounded bg-[rgba(0,255,136,0.2)] text-[7px] text-[#00ff88] font-bold">LIVE</span>
+              </div>
             </div>
-            <div className="overflow-y-auto flex-1 pr-1 border border-[rgba(255,79,216,0.06)] rounded-lg">
-              <table className="w-full text-[9px] text-left">
-                <thead>
-                  <tr style={{ background: 'rgba(255,79,216,0.02)' }} className="border-b border-[rgba(255,79,216,0.06)]">
-                    <th className="px-2 py-1 text-[#64748b]">SEVERITY</th>
-                    <th className="px-2 py-1 text-[#64748b]">DESCRIPTION</th>
-                    <th className="px-2 py-1 text-[#64748b] text-right">AMOUNT</th>
-                    <th className="px-2 py-1 text-[#64748b] text-center">ROW</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentAnomaliesList.map((anom) => {
-                    const sevColor = SEVERITY_COLORS[anom.severity] || '#ff4fd8';
-                    const amountVal = parseFloat(anom.expense_amount) || 0;
+            
+            <div className="flex-1 w-full mt-12" style={{ height: '360px' }}>
+              <QuantumCore metrics={coreMetrics} className="w-full h-full" />
+            </div>
+
+            {/* Integrated Telemetry Log grid at bottom of Core panel */}
+            <div className="border-t border-[rgba(255,79,216,0.12)] bg-[rgba(5,5,10,0.85)] p-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-[10px]">
+              <div>
+                <div className="font-bold text-[#ff4fd8] mb-1.5 uppercase tracking-wider" style={{ fontFamily: 'Orbitron, sans-serif' }}>Import Activity</div>
+                <div className="text-[#64748b] space-y-1">
+                  <div>📁 File: <span className="text-[#e2e8f0] font-semibold">{stats?.latest_import?.filename ?? 'expenses.csv'}</span></div>
+                  <div>📅 Ingested: <span className="text-[#e2e8f0] font-semibold">{stats?.latest_import ? new Date(stats.latest_import.created_at).toLocaleDateString('en-GB') : '14 Jun'}</span></div>
+                  <div>⚙️ Size: <span className="text-[#e2e8f0] font-semibold">{defaultTotalRecords} rows</span></div>
+                </div>
+              </div>
+              <div>
+                <div className="font-bold text-[#ff4fd8] mb-1.5 uppercase tracking-wider" style={{ fontFamily: 'Orbitron, sans-serif' }}>Quality Index</div>
+                <div className="text-[#64748b] space-y-1">
+                  <div>📊 Integrity Index: <span className="text-[#e2e8f0] font-semibold">{coreMetrics.integrity_score.toFixed(0)}%</span></div>
+                  <div>✓ Core Confidence: <span className="text-[#e2e8f0] font-semibold">{coreMetrics.confidence_score.toFixed(0)}%</span></div>
+                  <div>⚠️ Anomalies Check: <span className="text-[#e2e8f0] font-semibold">{defaultAnomalies} detected</span></div>
+                </div>
+              </div>
+              <div>
+                <div className="font-bold text-[#ff4fd8] mb-1.5 uppercase tracking-wider" style={{ fontFamily: 'Orbitron, sans-serif' }}>Spend Analysis</div>
+                <div className="text-[#64748b] space-y-1">
+                  <div>📈 Spend Trend: <span className="text-[#00ff88] font-bold">↑ 12.4%</span></div>
+                  <div>🛍️ Top Merchants: <span className="text-[#e2e8f0] font-semibold">{topMerchants.slice(0, 2).map(m => m.name.slice(0, 10)).join(', ')}</span></div>
+                  <div>🌍 Base Currency: <span className="text-[#e2e8f0] font-semibold">INR (Inferred)</span></div>
+                </div>
+              </div>
+            </div>
+          </HolographicPanel>
+        </div>
+
+        {/* RIGHT SIDEBAR: Consolidated Analytics (4 cols) */}
+        <div className="md:col-span-4 flex flex-col gap-4">
+          <HolographicPanel className="flex-1 flex flex-col justify-between p-4" glowColor="#ff4fd8">
+            <div className="space-y-4">
+              <div className="text-[10px] font-bold text-[#ff4fd8] uppercase tracking-wider" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                Analytics & Telemetry Console
+              </div>
+              
+              {/* Severity Breakdown */}
+              <div className="border-b border-[rgba(255,79,216,0.08)] pb-3">
+                <span className="text-[9px] font-bold text-[#64748b] block mb-2 uppercase tracking-wide" style={{ fontFamily: 'Orbitron, sans-serif' }}>Severity Distribution</span>
+                <div className="flex items-center gap-3">
+                  <div style={{ width: '60px', height: '60px' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={anomalyPieData} cx="50%" cy="50%" innerRadius={12} outerRadius={24} dataKey="value" stroke="none">
+                          {anomalyPieData.map((d, i) => <Cell key={i} fill={SEVERITY_COLORS[d.name.toUpperCase()]} />)}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 flex-1 text-[9px]">
+                    {anomalyPieData.map((d) => {
+                      const sevColor = SEVERITY_COLORS[d.name.toUpperCase()];
+                      return (
+                        <div key={d.name} className="flex items-center justify-between">
+                          <span className="text-[#94a3b8]">{d.name}</span>
+                          <span className="font-bold" style={{ color: sevColor }}>{d.value}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Spending By Category */}
+              <div className="border-b border-[rgba(255,79,216,0.08)] pb-3">
+                <span className="text-[9px] font-bold text-[#64748b] block mb-2 uppercase tracking-wide" style={{ fontFamily: 'Orbitron, sans-serif' }}>Category Distribution</span>
+                <div className="flex items-center gap-3">
+                  <div style={{ width: '60px', height: '60px' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={categoryPieData} cx="50%" cy="50%" innerRadius={12} outerRadius={24} dataKey="value" stroke="none">
+                          {categoryPieData.map((_, i) => <Cell key={i} fill={CAT_COLORS[i % 5]} />)}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="space-y-1 flex-1 text-[9px]">
+                    {categoryPieData.slice(0, 3).map((d, i) => {
+                      const total = categoryPieData.reduce((sum, item) => sum + item.value, 0);
+                      const pct = ((d.value / total) * 100).toFixed(0);
+                      return (
+                        <div key={d.name} className="flex items-center justify-between">
+                          <div className="flex items-center gap-1 truncate">
+                            <div className="w-1.5 h-1.5 rounded-full" style={{ background: CAT_COLORS[i % 5] }} />
+                            <span className="text-[#94a3b8] truncate">{d.name.slice(0, 12)}</span>
+                          </div>
+                          <span className="font-bold text-[#e2e8f0]">{pct}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Currency Index */}
+              <div className="border-b border-[rgba(255,79,216,0.08)] pb-3">
+                <span className="text-[9px] font-bold text-[#64748b] block mb-2 uppercase tracking-wide" style={{ fontFamily: 'Orbitron, sans-serif' }}>Currency Index</span>
+                <div className="grid grid-cols-3 gap-2 text-[9px]">
+                  {currencyPieData.map((d, i) => {
+                    const total = currencyPieData.reduce((sum, item) => sum + item.value, 0);
+                    const pct = ((d.value / total) * 100).toFixed(0);
                     return (
-                      <tr key={anom.id} className="border-b border-[rgba(255,79,216,0.03)] hover:bg-[rgba(255,79,216,0.01)]">
-                        <td className="px-2 py-1 font-bold" style={{ color: sevColor }}>{anom.severity}</td>
-                        <td className="px-2 py-1 text-[#e2e8f0] truncate max-w-[200px]">{anom.expense_description}</td>
-                        <td className="px-2 py-1 text-right text-[#94a3b8] font-mono">₹ {amountVal.toLocaleString()}</td>
-                        <td className="px-2 py-1 text-center text-[#475569] font-bold">#{anom.expense}</td>
-                      </tr>
+                      <div key={d.name} className="bg-[rgba(0,0,0,0.2)] p-1 rounded text-center border border-[rgba(255,79,216,0.05)]">
+                        <span className="font-semibold block" style={{ color: CURRENCY_COLORS[i % 3] }}>{d.name}</span>
+                        <span className="text-[#94a3b8] font-bold mt-0.5 block">{pct}%</span>
+                      </div>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
-          </HolographicPanel>
-        </div>
+                </div>
+              </div>
 
-        {/* Right Column (360px) */}
-        <div className="flex flex-col gap-4">
-          {/* Anomaly Breakdown */}
-          <HolographicPanel id="panel-anomaly-breakdown" className="p-4 flex flex-col h-[180px] justify-between">
-            <div className="text-[10px] font-bold text-[#b84dff] tracking-wider mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>ANOMALY BREAKDOWN</div>
-            <div className="flex items-center gap-4">
-              <ResponsiveContainer width={80} height={80}>
-                <PieChart>
-                  <Pie data={anomalyPieData} cx="50%" cy="50%" innerRadius={18} outerRadius={30} dataKey="value" stroke="none">
-                    {anomalyPieData.map((d, i) => <Cell key={i} fill={SEVERITY_COLORS[d.name.toUpperCase()]} />)}
-                  </Pie>
-                  <Tooltip contentStyle={{ background: '#0d0f1f', border: '1px solid rgba(255,79,216,0.2)', borderRadius: 8, fontSize: 10 }} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="space-y-1 flex-1">
-                {anomalyPieData.map((d) => {
-                  const pct = totalAnomCount > 0 ? ((d.value / totalAnomCount) * 100).toFixed(0) : 0;
-                  const sevColor = SEVERITY_COLORS[d.name.toUpperCase()];
-                  return (
-                    <div key={d.name} className="flex items-center justify-between text-[10px]">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: sevColor }} />
-                        <span className="text-[#94a3b8]">{d.name}</span>
-                      </div>
-                      <span className="font-bold font-mono" style={{ color: sevColor }}>{d.value} ({pct}%)</span>
+              {/* Top Spend Entities */}
+              <div>
+                <span className="text-[9px] font-bold text-[#64748b] block mb-2 uppercase tracking-wide" style={{ fontFamily: 'Orbitron, sans-serif' }}>Top Spend Entities</span>
+                <div className="space-y-1.5 text-[9px]">
+                  {topMerchants.slice(0, 3).map((m, i) => (
+                    <div key={m.name} className="flex justify-between items-center bg-[rgba(255,79,216,0.02)] px-2 py-1 rounded">
+                      <span className="text-[#94a3b8]">{i + 1}. {m.name.slice(0, 16)}</span>
+                      <span className="text-[#e2e8f0] font-mono font-bold">₹{Math.round(m.total/1000)}k</span>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
             </div>
-          </HolographicPanel>
 
-          {/* Currency Distribution */}
-          <HolographicPanel id="panel-currency" className="p-4 flex flex-col h-[180px] justify-between">
-            <div className="text-[10px] font-bold text-[#ff4fd8] tracking-wider mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>CURRENCY DISTRIBUTION</div>
-            <div className="flex items-center gap-4">
-              <ResponsiveContainer width={80} height={80}>
-                <PieChart>
-                  <Pie data={currencyPieData} cx="50%" cy="50%" innerRadius={18} outerRadius={30} dataKey="value" stroke="none">
-                    {currencyPieData.map((_, i) => <Cell key={i} fill={CURRENCY_COLORS[i % 3]} />)}
-                  </Pie>
-                  <Tooltip contentStyle={{ background: '#0d0f1f', border: '1px solid rgba(255,79,216,0.2)', borderRadius: 8, fontSize: 10 }} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="space-y-1 flex-1">
-                {currencyPieData.map((d, i) => {
-                  const total = currencyPieData.reduce((sum, item) => sum + item.value, 0);
-                  const pct = total > 0 ? ((d.value / total) * 100).toFixed(1) : 0;
-                  return (
-                    <div key={d.name} className="flex items-center justify-between text-[10px]">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: CURRENCY_COLORS[i % 3] }} />
-                        <span className="text-[#94a3b8]">{d.name}</span>
-                      </div>
-                      <span className="font-bold font-mono" style={{ color: CURRENCY_COLORS[i % 3] }}>{d.value} ({pct}%)</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </HolographicPanel>
-
-          {/* Severity Distribution */}
-          <HolographicPanel id="panel-severity" className="p-4 flex flex-col h-[180px] justify-between">
-            <div className="text-[10px] font-bold text-[#b84dff] tracking-wider mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>SEVERITY DISTRIBUTION</div>
-            <div className="space-y-2">
-              {anomalyPieData.map((d) => {
-                const sevColor = SEVERITY_COLORS[d.name.toUpperCase()];
-                const pct = totalAnomCount > 0 ? (d.value / totalAnomCount) * 100 : 0;
-                return (
-                  <div key={d.name} className="space-y-0.5">
-                    <div className="flex justify-between text-[9px] font-medium text-[#94a3b8]">
-                      <span>{d.name}</span>
-                      <span className="font-mono" style={{ color: sevColor }}>{d.value}</span>
-                    </div>
-                    <div className="w-full h-1 bg-[rgba(255,255,255,0.03)] rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: sevColor }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </HolographicPanel>
-
-          {/* Quick Actions (Moved from center column bottom) */}
-          <HolographicPanel id="panel-quick-actions" className="p-4 flex flex-col h-[180px] justify-between">
-            <div className="text-[10px] font-bold text-[#ff4fd8] tracking-wider mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>QUICK ACTIONS</div>
-            <div className="grid grid-cols-2 gap-2 flex-1 mt-1">
-              {[
-                { to: '/import',    icon: Upload,         label: 'Import CSV',      color: '#ff4fd8' },
-                { to: '/anomalies', icon: AlertTriangle,  label: 'Anomalies',    color: '#b84dff' },
-                { to: '/reports',   icon: FileText,       label: 'Reports',     color: '#ff6ec7' },
-                { to: '/dashboard', icon: Cpu,            label: 'AI Insights',    color: '#00ff88' },
-              ].map(({ to, icon: Icon, label, color }) => (
-                <Link key={label} to={to}
-                  className="flex items-center gap-2 p-2 rounded-lg text-[10px] transition-all hover:bg-[rgba(255,79,216,0.03)] border border-[rgba(255,79,216,0.08)] bg-[rgba(0,0,0,0.15)] text-[#94a3b8]">
-                  <Icon size={12} style={{ color }} />
-                  <span style={{ fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.05em' }}>{label}</span>
+            {/* Quick Access links */}
+            <div className="mt-4 pt-3 border-t border-[rgba(255,79,216,0.08)]">
+              <div className="grid grid-cols-2 gap-2 text-[9px]">
+                <Link to="/import" className="px-2 py-2 rounded text-center bg-[rgba(255,79,216,0.05)] hover:bg-[rgba(255,79,216,0.1)] border border-[rgba(255,79,216,0.15)] text-[#ff4fd8] font-bold transition-all" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                  📤 IMPORT CSV
                 </Link>
-              ))}
+                <Link to="/anomalies" className="px-2 py-2 rounded text-center bg-[rgba(180,77,255,0.05)] hover:bg-[rgba(180,77,255,0.1)] border border-[rgba(180,77,255,0.15)] text-[#b84dff] font-bold transition-all" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                  🔍 ANOMALIES
+                </Link>
+              </div>
             </div>
           </HolographicPanel>
         </div>
-
       </div>
-
-      {/* Dedicated Bottom Metrics Row (8 Cards) - Repositioned from core flanks */}
-      <div className="grid grid-cols-8 gap-4 mb-5">
-        {[
-          { label: 'INTEGRITY SCORE', value: `${coreMetrics.integrity_score.toFixed(0)}%`, sub: `GRADE ${coreMetrics.grade}`, color: '#ff4fd8' },
-          { label: 'CONFIDENCE SCORE', value: `${coreMetrics.confidence_score.toFixed(0)}%`, sub: 'Deterministic', color: '#b84dff' },
-          { label: 'DUPLICATE COUNT', value: stats?.duplicate_count ?? 8, sub: 'Flagged duplicate', color: '#ff3d3d' },
-          { label: 'MISSING FIELDS', value: stats?.missing_field_count ?? 12, sub: 'Incomplete data', color: '#ff8c00' },
-          { label: 'CORE STABILITY', value: `${Math.max(10, Math.round(coreMetrics.integrity_score * 0.6))}%`, sub: 'Telemetry health', color: '#ff6ec7' },
-          { label: 'DATA QUALITY', value: `${coreMetrics.integrity_score.toFixed(0)}%`, sub: 'Audit matching', color: '#ff4fd8' },
-          { label: 'SETTLEMENTS', value: stats?.settlement_count ?? 0, sub: 'Separated entries', color: '#00ff88' },
-          { label: 'ACTIVE RULES', value: '18', sub: 'Active scanner', color: '#b84dff' },
-        ].map(({ label, value, sub, color }) => (
-          <HolographicPanel key={label} noPad className="p-3 flex flex-col justify-between h-20" glowColor={`${color}15`}>
-            <div className="text-[8px] font-bold text-[#64748b] tracking-wider" style={{ fontFamily: 'Orbitron, sans-serif' }}>{label}</div>
-            <div className="text-base font-bold" style={{ color, fontFamily: 'Orbitron, sans-serif' }}>{value}</div>
-            <div className="text-[8px] text-[#475569] truncate">{sub}</div>
-          </HolographicPanel>
-        ))}
-      </div>
-
-      {/* Bottom Insights Row: Engineering Decision & AI Insight Preview */}
-      <div className="grid grid-cols-2 gap-5">
-        {/* Engineering Decision */}
-        <HolographicPanel id="panel-eng-decision" className="p-4 h-[180px] flex flex-col justify-between" glowColor="rgba(255,79,216,0.15)">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-bold text-[#ff4fd8] tracking-wider" style={{ fontFamily: 'Orbitron, sans-serif' }}>ENGINEERING DECISION</span>
-              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-[rgba(0,255,136,0.1)] text-[#00ff88]">APPROVED</span>
-            </div>
-            <div className="text-[10px] font-semibold text-[#64748b] mb-1">TOP RULE: Duplicate Detection</div>
-            <div className="space-y-2 text-[10px] text-[#94a3b8] leading-relaxed">
-              <div>
-                <span className="font-bold text-[#e2e8f0]">Decision:</span> Flag for Manual Review.
-              </div>
-              <div>
-                <span className="font-bold text-[#e2e8f0]">Reason:</span> High confidence duplicates can still represent legitimate recurring operations.
-              </div>
-            </div>
-          </div>
-          <Link to="/anomalies" className="text-[9px] text-[#ff4fd8] hover:text-[#ff6ec7] font-bold flex items-center gap-1 mt-2">
-            View All Decisions <ArrowRight size={10} />
-          </Link>
-        </HolographicPanel>
-
-        {/* AI Insight Preview */}
-        <HolographicPanel id="panel-ai-insight" className="p-4 h-[180px] flex flex-col justify-between" glowColor="rgba(184,77,255,0.2)">
-          <div>
-            <div className="text-[10px] font-bold text-[#b84dff] tracking-wider mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>AI INSIGHT PREVIEW</div>
-            <div className="text-[10px] font-semibold text-[#64748b] mb-1">MOST COMMON ANOMALY</div>
-            <div className="text-[11px] font-bold text-[#f8fafc] mb-1">Duplicate Expenses</div>
-            <p className="text-[10px] text-[#94a3b8] leading-relaxed mb-3">
-              {stats?.duplicate_count ?? 8} potential duplicates detected which could inflate total spend by ₹ {((stats?.duplicate_count ?? 8) * 1850).toLocaleString()}. Recommended Action: Manual review ledger.
-            </p>
-          </div>
-          <div className="flex items-center justify-between border-t border-[rgba(255,79,216,0.06)] pt-2 mt-auto">
-            <Link to="/anomalies" className="text-[9px] text-[#b84dff] hover:text-[#d8b4fe] font-bold flex items-center gap-1">
-              View Full Insights <ArrowRight size={10} />
-            </Link>
-            <Cpu size={16} className="text-[#b84dff] animate-pulse" />
-          </div>
-        </HolographicPanel>
-      </div>
-
     </div>
   );
 }
+

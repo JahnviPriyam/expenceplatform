@@ -19,6 +19,10 @@
 - `/anomalies` — Full anomaly ledger with AI explanation console
 - `/reports` — Import summaries with PDF export and integrity score formula
 
+### Integrity Score
+
+The integrity score is computed server-side as a penalty-based value starting at 100. Each detected anomaly type subtracts a fixed number of points (with per-type caps) and the final score maps to a grade (A/B+/B/C/D/F). This design emphasizes the impact of high-severity issues over raw anomaly density and is documented in `docs/DECISIONS.md`.
+
 ## Pages Planned (Phase 2)
 
 - `/expenses` — Full sortable, filterable expense table

@@ -5,24 +5,19 @@ Builds structured ImportReport data and renders PDF output.
 """
 import io
 from typing import Dict, Any
+from django.db.models import Count
 
 from django.template.loader import render_to_string
 
 
 def build_report_data(import_batch) -> Dict[str, Any]:
     """Assemble the full report payload from an ImportBatch instance."""
-    anomalies = import_batch.anomalies.all()
-    breakdown = {
-        'CRITICAL': anomalies.filter(severity='CRITICAL').count(),
-        'HIGH':     anomalies.filter(severity='HIGH').count(),
-        'MEDIUM':   anomalies.filter(severity='MEDIUM').count(),
-        'LOW':      anomalies.filter(severity='LOW').count(),
-    }
+    # Use DB-side aggregation for anomaly breakdown and top types
+    breakdown_qs = import_batch.anomalies.values('severity').annotate(count=Count('id'))
+    breakdown = {item['severity']: item['count'] for item in breakdown_qs}
 
-    top_anomaly_types = {}
-    for a in anomalies:
-        top_anomaly_types[a.anomaly_type] = top_anomaly_types.get(a.anomaly_type, 0) + 1
-    top_types_sorted = sorted(top_anomaly_types.items(), key=lambda x: x[1], reverse=True)
+    top_types_qs = import_batch.anomalies.values('anomaly_type').annotate(count=Count('id')).order_by('-count')
+    top_types_sorted = [(item['anomaly_type'], item['count']) for item in top_types_qs]
 
     return {
         'batch': import_batch,

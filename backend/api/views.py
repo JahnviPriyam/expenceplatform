@@ -3,7 +3,6 @@ API Views — Django REST Framework
 """
 import io
 from decimal import Decimal
-from collections import Counter
 
 from django.contrib.auth.models import User
 from django.http import HttpResponse
@@ -151,8 +150,10 @@ def dashboard_stats(request):
     expenses = Expense.objects.filter(user=request.user, is_settlement=False)
     anomalies = Anomaly.objects.filter(expense__user=request.user)
 
+    # Aggregate expense totals and currency distribution in the DB
     total_amount = expenses.aggregate(t=Sum('amount'))['t'] or Decimal('0')
-    currency_dist = dict(Counter(expenses.values_list('currency', flat=True)))
+    currency_qs = expenses.values('currency').annotate(count=Count('id'))
+    currency_dist = {c['currency'] or 'UNKNOWN': c['count'] for c in currency_qs}
 
     categories = list(
         expenses.values('category')
@@ -160,20 +161,26 @@ def dashboard_stats(request):
         .order_by('-total')[:5]
     )
 
-    latest_batch = ImportBatch.objects.filter(user=request.user).first()
+    # Compute anomaly counts via grouped queries to avoid repeated .count() calls
+    severity_counts = {item['severity']: item['count'] for item in anomalies.values('severity').annotate(count=Count('id'))}
+
+    # Anomaly type counts (for duplicates / missing-field metrics)
+    type_counts = {item['anomaly_type']: item['count'] for item in anomalies.values('anomaly_type').annotate(count=Count('id'))}
+
+    latest_batch = ImportBatch.objects.filter(user=request.user).prefetch_related('anomalies').first()
     integrity_score = latest_batch.integrity_score if latest_batch else 100.0
     grade = latest_batch.grade if latest_batch else 'A'
 
     data = {
         'total_expenses': expenses.count(),
         'total_amount': total_amount,
-        'total_anomalies': anomalies.count(),
-        'critical_anomalies': anomalies.filter(severity='CRITICAL').count(),
-        'high_anomalies': anomalies.filter(severity='HIGH').count(),
-        'medium_anomalies': anomalies.filter(severity='MEDIUM').count(),
-        'low_anomalies': anomalies.filter(severity='LOW').count(),
-        'duplicate_count': anomalies.filter(anomaly_type='DUPLICATE_EXPENSE').count(),
-        'missing_field_count': anomalies.filter(anomaly_type__in=['MISSING_CURRENCY', 'MISSING_PAYER']).count(),
+        'total_anomalies': sum(severity_counts.values()) if severity_counts else 0,
+        'critical_anomalies': severity_counts.get('CRITICAL', 0),
+        'high_anomalies': severity_counts.get('HIGH', 0),
+        'medium_anomalies': severity_counts.get('MEDIUM', 0),
+        'low_anomalies': severity_counts.get('LOW', 0),
+        'duplicate_count': type_counts.get('DUPLICATE_EXPENSE', 0),
+        'missing_field_count': sum(type_counts.get(k, 0) for k in ['MISSING_CURRENCY', 'MISSING_PAYER']),
         'settlement_count': Settlement.objects.filter(user=request.user).count(),
         'integrity_score': integrity_score,
         'grade': grade,

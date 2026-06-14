@@ -34,3 +34,34 @@ the development of Expense Nexus, and the reasoning behind each choice.
 | Multi-tenancy | Out of scope for assignment |
 | 2000+ particle engine | Decorative, not functional — kept at ~120 particles |
 | Web Audio API spacecraft hum | Adds complexity without informational value |
+
+---
+
+## Integrity Score Design
+
+Start Score: 100
+
+Scoring is penalty-based: each anomaly type subtracts a fixed number of points from the start score. To avoid a single issue type dominating the score, each anomaly type has a maximum cumulative cap per import batch.
+
+Penalty table (examples):
+- Duplicate Expense: -10 pts, cap 30
+- Missing Payer: -15 pts, cap 25
+- Invalid Split: -20 pts, cap 30
+- Missing Currency: -5 pts, cap 20
+- Ambiguous Date: -10 pts, cap 15
+- Unusual Amount: -3 pts, cap 15
+- Future Date: -10 pts, cap 10
+- Single Participant: -2 pts, cap 10
+- Settlement Mixed: -5 pts, cap 10
+
+Final integrity score = max(0, round(100 - total_penalty, 1)).
+
+Grade mapping:
+- A: 90+
+- B+: 80+
+- B: 70+
+- C: 60+
+- D: 50+
+- F: else
+
+Design rationale: using an absolute penalty model focuses on the impact of specific issues rather than anomaly density. A single critical missing payer is considered a high-impact data-quality problem and should meaningfully reduce the dataset's integrity score regardless of dataset size.
