@@ -146,7 +146,17 @@ Set `GEMINI_API_KEY`, `DATABASE_URL`, `SECRET_KEY`, and `DEBUG=False` in your de
 
 | Doc | Description |
 |---|---|
-| [AI_USAGE.md](docs/AI_USAGE.md) | Gemini API prompts and engineering decisions |
-| [DECISIONS.md](docs/DECISIONS.md) | Key engineering decisions and rationale |
-| [DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md) | Database table design |
-| [SCOPE.md](docs/SCOPE.md) | Project scope and assignment alignment |
+| [SCOPE.md](SCOPE.md) | Project scope and assignment alignment |
+| [DECISIONS.md](DECISIONS.md) | Key engineering decisions and rationale |
+| [AI_USAGE.md](AI_USAGE.md) | AI tools used during development + Gemini API integration |
+
+---
+
+## Demo Credentials
+
+```
+URL:      http://localhost:3000
+Username: admin
+Password: admin
+```
+
