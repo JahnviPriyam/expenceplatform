@@ -172,6 +172,9 @@ def dashboard_stats(request):
         'high_anomalies': anomalies.filter(severity='HIGH').count(),
         'medium_anomalies': anomalies.filter(severity='MEDIUM').count(),
         'low_anomalies': anomalies.filter(severity='LOW').count(),
+        'duplicate_count': anomalies.filter(anomaly_type='DUPLICATE_EXPENSE').count(),
+        'missing_field_count': anomalies.filter(anomaly_type__in=['MISSING_CURRENCY', 'MISSING_PAYER']).count(),
+        'settlement_count': Settlement.objects.filter(user=request.user).count(),
         'integrity_score': integrity_score,
         'grade': grade,
         'currency_distribution': currency_dist,
@@ -244,6 +247,9 @@ class AnomalyViewSet(viewsets.ReadOnlyModelViewSet):
         anomaly_type = self.request.query_params.get('type')
         if anomaly_type:
             qs = qs.filter(anomaly_type=anomaly_type.upper())
+        import_batch = self.request.query_params.get('import_batch')
+        if import_batch:
+            qs = qs.filter(import_batch_id=import_batch)
         return qs
 
 
