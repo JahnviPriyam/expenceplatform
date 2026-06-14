@@ -5,11 +5,14 @@ import * as THREE from 'three';
 import type { CoreMetrics } from '../types';
 
 // ── Color mapping by core state ──────────────────────────────────────────────
+// Pristine (Excellent): Purple + White
+// Stable (Healthy): Pink + Purple
+// Warning/Critical (Poor): Red + Magenta
 const STATE_COLORS = {
-  pristine:  { core: '#00f0ff', ring1: '#0066ff', ring2: '#00f0ff', particle: '#60dfff', glow: '#00f0ff' },
-  stable:    { core: '#00c8ff', ring1: '#0052cc', ring2: '#00c8ff', particle: '#40c8ff', glow: '#00c8ff' },
-  warning:   { core: '#9d4edd', ring1: '#6b21a8', ring2: '#c084fc', particle: '#c084fc', glow: '#9d4edd' },
-  critical:  { core: '#ff3d3d', ring1: '#991b1b', ring2: '#ff6b6b', particle: '#ff8888', glow: '#ff3d3d' },
+  pristine:  { core: '#b84dff', ring1: '#ffffff', ring2: '#ff6ec7', particle: '#ffffff', glow: '#b84dff' },
+  stable:    { core: '#ff4fd8', ring1: '#b84dff', ring2: '#ff6ec7', particle: '#b84dff', glow: '#ff4fd8' },
+  warning:   { core: '#ff3d3d', ring1: '#ff4fd8', ring2: '#ff6ec7', particle: '#ff4fd8', glow: '#ff3d3d' },
+  critical:  { core: '#ff3d3d', ring1: '#ff4fd8', ring2: '#ff3d3d', particle: '#ff6ec7', glow: '#ff3d3d' },
 };
 
 // ── Central Intelligence Sphere ──────────────────────────────────────────────
@@ -32,7 +35,8 @@ function CoreSphere({ metrics }: { metrics: CoreMetrics }) {
   return (
     <Float speed={2} rotationIntensity={0.2} floatIntensity={0.5}>
       <mesh ref={meshRef}>
-        <sphereGeometry args={[1.2, 64, 64]} />
+        {/* Core sphere size increased by 40% (1.2 -> 1.68) */}
+        <sphereGeometry args={[1.68, 64, 64]} />
         <MeshDistortMaterial
           color={colors.core}
           emissive={colors.core}
@@ -47,7 +51,7 @@ function CoreSphere({ metrics }: { metrics: CoreMetrics }) {
       </mesh>
       {/* Inner glow sphere */}
       <mesh scale={0.85}>
-        <sphereGeometry args={[1.2, 32, 32]} />
+        <sphereGeometry args={[1.68, 32, 32]} />
         <meshBasicMaterial color={colors.core} transparent opacity={0.15} />
       </mesh>
     </Float>
@@ -97,8 +101,9 @@ function OrbitParticles({ count = 120, metrics }: { count?: number; metrics: Cor
     const pos = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
       const angle = (i / count) * Math.PI * 2;
-      const radius = 2.5 + Math.random() * 1.5;
-      const height = (Math.random() - 0.5) * 2;
+      // Scaled up particle orbit bounds
+      const radius = 3.2 + Math.random() * 1.8;
+      const height = (Math.random() - 0.5) * 2.5;
       pos[i * 3]     = Math.cos(angle) * radius;
       pos[i * 3 + 1] = height;
       pos[i * 3 + 2] = Math.sin(angle) * radius;
@@ -137,9 +142,9 @@ function DataStreams({ metrics }: { metrics: CoreMetrics }) {
   const lines = React.useMemo(() => {
     return Array.from({ length: 8 }, (_, i) => {
       const angle = (i / 8) * Math.PI * 2;
-      const r = 3.5;
+      const r = 4.2;
       return {
-        start: new THREE.Vector3(Math.cos(angle) * r, (Math.random() - 0.5) * 2, Math.sin(angle) * r),
+        start: new THREE.Vector3(Math.cos(angle) * r, (Math.random() - 0.5) * 2.5, Math.sin(angle) * r),
         end: new THREE.Vector3(0, 0, 0),
       };
     });
@@ -177,8 +182,8 @@ function SceneLights({ metrics }: { metrics: CoreMetrics }) {
     <>
       <ambientLight intensity={0.2} />
       <pointLight ref={lightRef} position={[0, 0, 0]} color={colors.glow} intensity={2} distance={10} />
-      <pointLight position={[5, 5, 5]} color="#0066ff" intensity={0.5} />
-      <pointLight position={[-5, -5, 5]} color="#9d4edd" intensity={0.3} />
+      <pointLight position={[5, 5, 5]} color="#ff6ec7" intensity={0.5} />
+      <pointLight position={[-5, -5, 5]} color="#b84dff" intensity={0.3} />
     </>
   );
 }
@@ -205,7 +210,7 @@ export default function QuantumCore({ metrics, className = '' }: QuantumCoreProp
       />
 
       <Canvas
-        camera={{ position: [0, 0, 7], fov: 50 }}
+        camera={{ position: [0, 0, 8.5], fov: 50 }}
         gl={{ antialias: true, alpha: true }}
         style={{ background: 'transparent' }}
       >
@@ -215,10 +220,10 @@ export default function QuantumCore({ metrics, className = '' }: QuantumCoreProp
         {/* Core Sphere */}
         <CoreSphere metrics={metrics} />
 
-        {/* Orbital Rings */}
-        <OrbitalRing radius={2.2} tubeRadius={0.015} color={colors.ring1} speed={0.4} tiltX={Math.PI / 4}  tiltZ={0}             instability={instability} />
-        <OrbitalRing radius={2.6} tubeRadius={0.012} color={colors.ring2} speed={-0.3} tiltX={Math.PI / 6} tiltZ={Math.PI / 5}   instability={instability} />
-        <OrbitalRing radius={3.0} tubeRadius={0.008} color={colors.ring1} speed={0.2} tiltX={Math.PI / 3}  tiltZ={-Math.PI / 4}  instability={instability} />
+        {/* Orbital Rings - Scaled up by 40% */}
+        <OrbitalRing radius={3.0} tubeRadius={0.015} color={colors.ring1} speed={0.4} tiltX={Math.PI / 4}  tiltZ={0}             instability={instability} />
+        <OrbitalRing radius={3.6} tubeRadius={0.012} color={colors.ring2} speed={-0.3} tiltX={Math.PI / 6} tiltZ={Math.PI / 5}   instability={instability} />
+        <OrbitalRing radius={4.2} tubeRadius={0.008} color={colors.ring1} speed={0.2} tiltX={Math.PI / 3}  tiltZ={-Math.PI / 4}  instability={instability} />
 
         {/* Particles */}
         <OrbitParticles count={instability > 0.4 ? 200 : 120} metrics={metrics} />
@@ -226,69 +231,6 @@ export default function QuantumCore({ metrics, className = '' }: QuantumCoreProp
         {/* Data streams */}
         <DataStreams metrics={metrics} />
       </Canvas>
-
-      {/* HUD Overlays */}
-      <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-6">
-        {/* Top: State label */}
-        <div className="flex justify-center">
-          <CoreStateBadge
-            state={metrics.state}
-            colors={colors}
-            grade={metrics.grade}
-          />
-        </div>
-
-        {/* Bottom: Metrics bar */}
-        <div className="grid grid-cols-4 gap-3">
-          {[
-            { label: 'ANOMALIES', value: metrics.anomalies_found, unit: '', alert: metrics.anomalies_found > 5 },
-            { label: 'CORE STABILITY', value: `${metrics.integrity_score.toFixed(0)}`, unit: '%', alert: metrics.integrity_score < 70 },
-            { label: 'DATA INTEGRITY', value: `${metrics.data_integrity.toFixed(0)}`, unit: '%', alert: metrics.data_integrity < 75 },
-            { label: 'CONFIDENCE', value: `${metrics.confidence_score.toFixed(0)}`, unit: '%', alert: false },
-          ].map(({ label, value, unit, alert }) => (
-            <div
-              key={label}
-              className="rounded-xl p-3 text-center"
-              style={{
-                background: 'rgba(8,9,20,0.85)',
-                border: `1px solid ${alert ? 'rgba(157,78,221,0.4)' : 'rgba(0,240,255,0.15)'}`,
-                backdropFilter: 'blur(10px)',
-              }}
-            >
-              <div className="text-[9px] font-bold mb-1" style={{ color: '#475569', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.08em' }}>
-                {label}
-              </div>
-              <div className="text-xl font-bold" style={{ color: alert ? '#c084fc' : '#00f0ff', fontFamily: 'Orbitron, sans-serif' }}>
-                {value}<span className="text-xs ml-0.5" style={{ color: '#475569' }}>{unit}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Inline state badge
-function CoreStateBadge({ state, colors, grade }: { state: string; colors: any; grade: string }) {
-  const labels: Record<string, string> = {
-    pristine: 'AWAITING DATA',
-    stable:   'CORE STABLE',
-    warning:  'ANOMALIES DETECTED',
-    critical: 'CRITICAL INTEGRITY FAILURE',
-  };
-  return (
-    <div
-      className="px-4 py-1.5 rounded-full text-xs font-bold tracking-widest"
-      style={{
-        background: `${colors.glow}20`,
-        border: `1px solid ${colors.glow}50`,
-        color: colors.glow,
-        fontFamily: 'Orbitron, sans-serif',
-        letterSpacing: '0.15em',
-      }}
-    >
-      {labels[state]} {grade && grade !== 'A' ? `· GRADE ${grade}` : ''}
     </div>
   );
 }

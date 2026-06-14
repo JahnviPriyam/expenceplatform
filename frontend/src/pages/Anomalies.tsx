@@ -1,28 +1,47 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Filter } from 'lucide-react';
-import AnomalyCard from '../components/AnomalyCard';
 import AIConsole from '../components/AIConsole';
 import HolographicPanel from '../components/HolographicPanel';
-import { useAnomalies, useAIExplain } from '../hooks/useData';
-import type { Severity } from '../types';
+import { useAnomalies, useAIExplain, useExpenses } from '../hooks/useData';
+import type { Severity, Participant } from '../types';
 
 const SEVERITIES: (Severity | 'ALL')[] = ['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 
 const SEVERITY_COLORS: Record<string, string> = {
-  ALL:      '#00f0ff',
+  ALL:      '#ff4fd8',
   CRITICAL: '#ff3d3d',
   HIGH:     '#ff8c00',
-  MEDIUM:   '#9d4edd',
+  MEDIUM:   '#b84dff',
   LOW:      '#00aaff',
+};
+
+const TYPE_LABELS: Record<string, string> = {
+  DUPLICATE_EXPENSE:   'Duplicate Expense',
+  MISSING_CURRENCY:    'Missing Currency',
+  MISSING_PAYER:       'Missing Payer',
+  INVALID_SPLIT:       'Invalid Split',
+  UNUSUAL_AMOUNT:      'Unusual Amount',
+  FUTURE_DATE:         'Future Date',
+  AMBIGUOUS_DATE:      'Ambiguous Date',
+  SINGLE_PARTICIPANT:  'Single Participant',
+  SETTLEMENT_MIXED:    'Settlement Mixed',
 };
 
 export default function Anomalies() {
   const [filter, setFilter] = useState<Severity | 'ALL'>('ALL');
   const { anomalies, loading } = useAnomalies(filter === 'ALL' ? undefined : filter);
-  const { explanation, loading: aiLoading, activeAnomalyId, explain } = useAIExplain();
+  const { explanation, loading: aiLoading, explain } = useAIExplain();
+  const { expenses } = useExpenses();
+  const [selectedAnomalyId, setSelectedAnomalyId] = useState<number | null>(null);
 
-  const activeAnomaly = anomalies.find(a => a.id === activeAnomalyId);
+  const activeAnomaly = anomalies.find(a => a.id === selectedAnomalyId);
+  const activeExpense = activeAnomaly ? expenses.find(e => e.id === activeAnomaly.expense) : null;
+
+  const handleRowClick = (id: number) => {
+    setSelectedAnomalyId(id);
+    explain(id);
+  };
 
   const counts = anomalies.reduce((acc, a) => {
     acc[a.severity] = (acc[a.severity] || 0) + 1;
@@ -31,11 +50,12 @@ export default function Anomalies() {
 
   return (
     <div className="min-h-screen p-6">
+      {/* Page Header */}
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-        <h1 className="text-xl font-bold" style={{ color: '#00f0ff', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.1em' }}>
+        <h1 className="title-page text-[#ff4fd8]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
           ANOMALY DETECTION CENTER
         </h1>
-        <p className="text-xs mt-0.5" style={{ color: '#475569' }}>
+        <p className="text-xs mt-1 text-[#64748b]">
           {anomalies.length} anomalies detected · Click any anomaly for AI analysis
         </p>
       </motion.div>
@@ -51,15 +71,15 @@ export default function Anomalies() {
             id={`filter-${sev.toLowerCase()}`}
             className="rounded-xl p-3 text-left transition-all"
             style={{
-              background: filter === sev ? `${SEVERITY_COLORS[sev]}15` : 'rgba(13,15,31,0.7)',
-              border: `1px solid ${filter === sev ? SEVERITY_COLORS[sev] + '60' : 'rgba(0,240,255,0.1)'}`,
-              boxShadow: filter === sev ? `0 0 20px ${SEVERITY_COLORS[sev]}20` : 'none',
+              background: filter === sev ? `${SEVERITY_COLORS[sev]}15` : 'rgba(12,12,20,0.85)',
+              border: `1px solid ${filter === sev ? SEVERITY_COLORS[sev] + '60' : 'rgba(255,79,216,0.08)'}`,
+              boxShadow: filter === sev ? `0 0 10px ${SEVERITY_COLORS[sev]}15` : 'none',
             }}
           >
             <div className="text-xl font-bold" style={{ color: SEVERITY_COLORS[sev], fontFamily: 'Orbitron, sans-serif' }}>
               {counts[sev] ?? 0}
             </div>
-            <div className="text-[10px] font-bold mt-0.5" style={{ color: filter === sev ? SEVERITY_COLORS[sev] : '#475569', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.08em' }}>
+            <div className="text-[10px] font-bold mt-0.5" style={{ color: filter === sev ? SEVERITY_COLORS[sev] : '#64748b', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.08em' }}>
               {sev}
             </div>
           </motion.button>
@@ -68,14 +88,14 @@ export default function Anomalies() {
 
       <div className="grid grid-cols-12 gap-6">
 
-        {/* ── Anomaly List ── */}
-        <div className="col-span-5">
+        {/* Left Column: Anomaly List (6 cols = 50% width) */}
+        <div className="col-span-6">
           <HolographicPanel noPad className="h-full" id="panel-anomaly-list">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(0,240,255,0.1)]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(255,79,216,0.08)]">
               <div className="flex items-center gap-2">
-                <Filter size={13} style={{ color: '#00f0ff' }} />
-                <span className="text-[10px] font-bold" style={{ color: '#00f0ff', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.1em' }}>
+                <Filter size={13} style={{ color: '#ff4fd8' }} />
+                <span className="text-[10px] font-bold" style={{ color: '#ff4fd8', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.1em' }}>
                   ANOMALY LEDGER
                 </span>
               </div>
@@ -86,9 +106,9 @@ export default function Anomalies() {
                     onClick={() => setFilter(s)}
                     className="px-2 py-0.5 rounded text-[9px] font-bold transition-all"
                     style={{
-                      background: filter === s ? `${SEVERITY_COLORS[s] || '#00f0ff'}20` : 'transparent',
-                      color: filter === s ? (SEVERITY_COLORS[s] || '#00f0ff') : '#334155',
-                      border: filter === s ? `1px solid ${SEVERITY_COLORS[s] || '#00f0ff'}40` : '1px solid transparent',
+                      background: filter === s ? `${SEVERITY_COLORS[s] || '#ff4fd8'}20` : 'transparent',
+                      color: filter === s ? (SEVERITY_COLORS[s] || '#ff4fd8') : '#475569',
+                      border: filter === s ? `1px solid ${SEVERITY_COLORS[s] || '#ff4fd8'}40` : '1px solid transparent',
                       fontFamily: 'Orbitron, sans-serif',
                     }}
                   >
@@ -98,62 +118,201 @@ export default function Anomalies() {
               </div>
             </div>
 
-            {/* List */}
-            <div className="p-4 space-y-3 overflow-y-auto max-h-[680px]">
-              {loading && (
-                <div className="text-center py-10">
-                  <div className="text-xs animate-pulse" style={{ color: '#475569' }}>SCANNING...</div>
-                </div>
-              )}
-              {!loading && anomalies.length === 0 && (
-                <div className="text-center py-10">
-                  <div className="text-xs" style={{ color: '#334155' }}>No anomalies found for this filter</div>
-                </div>
-              )}
-              {anomalies.map((anomaly, i) => (
-                <AnomalyCard
-                  key={anomaly.id}
-                  anomaly={anomaly}
-                  onExplain={explain}
-                  isActive={anomaly.id === activeAnomalyId}
-                  index={i}
-                />
-              ))}
-            </div>
+            {loading ? (
+              <div className="text-center py-20 text-xs animate-pulse text-[#64748b]">SCANNING AUDIT RECORDS...</div>
+            ) : anomalies.length === 0 ? (
+              <div className="text-center py-20 text-xs text-[#475569]">No anomalies found for filter state.</div>
+            ) : (
+              <div className="overflow-y-auto max-h-[500px] rounded-lg border border-[rgba(255,79,216,0.06)]">
+                <table className="w-full text-[11px] text-left border-collapse">
+                  <thead>
+                    <tr style={{ background: 'rgba(8,9,20,0.9)', borderBottom: '1px solid rgba(255,79,216,0.08)' }}>
+                      <th className="p-3 font-bold text-[#64748b] tracking-wider" style={{ fontFamily: 'Orbitron, sans-serif' }}>TYPE</th>
+                      <th className="p-3 font-bold text-[#64748b] tracking-wider" style={{ fontFamily: 'Orbitron, sans-serif' }}>SEVERITY</th>
+                      <th className="p-3 font-bold text-[#64748b] tracking-wider text-center" style={{ fontFamily: 'Orbitron, sans-serif' }}>ROW</th>
+                      <th className="p-3 font-bold text-[#64748b] tracking-wider" style={{ fontFamily: 'Orbitron, sans-serif' }}>ACTION TAKEN</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {anomalies.map((a) => {
+                      const isSelected = selectedAnomalyId === a.id;
+                      const sevColor = SEVERITY_COLORS[a.severity] || '#ff4fd8';
+                      return (
+                        <tr
+                          key={a.id}
+                          onClick={() => handleRowClick(a.id)}
+                          className="hover:bg-[rgba(255,79,216,0.03)] cursor-pointer transition-all border-b border-[rgba(255,79,216,0.03)]"
+                          style={{
+                            background: isSelected ? `${sevColor}06` : 'transparent',
+                            outline: isSelected ? `1px solid ${sevColor}30` : 'none',
+                          }}
+                          id={`anomaly-row-${a.id}`}
+                        >
+                          <td className="p-3 font-medium text-[#e2e8f0]">
+                            {TYPE_LABELS[a.anomaly_type] || a.anomaly_type}
+                          </td>
+                          <td className="p-3">
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                              style={{
+                                background: `${sevColor}15`,
+                                border: `1px solid ${sevColor}40`,
+                                color: sevColor,
+                                fontFamily: 'Orbitron, sans-serif',
+                                letterSpacing: '0.05em'
+                              }}>
+                              {a.severity}
+                            </span>
+                          </td>
+                          <td className="p-3 text-center text-[#94a3b8] font-bold">
+                            #{a.expense}
+                          </td>
+                          <td className="p-3">
+                            <span className="text-[10px]" style={{ color: a.resolved ? '#00ff88' : '#e2e8f0' }}>
+                              {a.resolved ? '✓ Resolved' : '⚠ Flagged for review'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </HolographicPanel>
         </div>
 
-        {/* ── AI Console ── */}
-        <div className="col-span-7 flex flex-col gap-5">
+        {/* Center Column: Selected Anomaly Details (3 cols) */}
+        <div className="col-span-3 flex flex-col">
+          <HolographicPanel className="flex-1 flex flex-col h-full p-4 justify-between" id="panel-anomaly-details">
+            <div>
+              <div className="title-section text-[#ff4fd8] mb-4" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                RECORD ATTRIBUTES
+              </div>
+              
+              {activeAnomaly ? (
+                <div className="space-y-4">
+                  {/* Expense Title */}
+                  <div>
+                    <span className="text-[10px] text-[#64748b] font-bold uppercase tracking-wider" style={{ fontFamily: 'Orbitron, sans-serif' }}>Description</span>
+                    <div className="text-sm font-bold text-[#f8fafc] mt-0.5">{activeAnomaly.expense_description}</div>
+                  </div>
+
+                  {/* Expense Amount */}
+                  <div className="flex gap-4">
+                    <div>
+                      <span className="text-[10px] text-[#64748b] font-bold uppercase tracking-wider" style={{ fontFamily: 'Orbitron, sans-serif' }}>Amount</span>
+                      <div className="text-lg font-bold text-[#ff4fd8]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                        {activeAnomaly.expense_currency} {parseFloat(activeAnomaly.expense_amount).toLocaleString()}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-[#64748b] font-bold uppercase tracking-wider" style={{ fontFamily: 'Orbitron, sans-serif' }}>Date</span>
+                      <div className="text-xs text-[#94a3b8] font-bold mt-1">{activeAnomaly.expense_date}</div>
+                    </div>
+                  </div>
+
+                  {/* Payer and Category */}
+                  {activeExpense && (
+                    <div className="grid grid-cols-2 gap-3 border-t border-[rgba(255,79,216,0.08)] pt-3">
+                      <div>
+                        <span className="text-[10px] text-[#64748b] font-bold uppercase tracking-wider" style={{ fontFamily: 'Orbitron, sans-serif' }}>Payer</span>
+                        <div className="text-xs font-semibold text-[#e2e8f0] mt-0.5">{activeExpense.payer || '(missing)'}</div>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#64748b] font-bold uppercase tracking-wider" style={{ fontFamily: 'Orbitron, sans-serif' }}>Category</span>
+                        <div className="text-xs font-semibold text-[#e2e8f0] mt-0.5">{activeExpense.category || '(uncategorised)'}</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Split Allocations */}
+                  {activeExpense && activeExpense.participants?.length > 0 && (
+                    <div className="border-t border-[rgba(255,79,216,0.08)] pt-3">
+                      <span className="text-[10px] text-[#64748b] font-bold uppercase tracking-wider mb-1.5 block" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                        Split Shares ({activeExpense.split_type})
+                      </span>
+                      <div className="space-y-1.5 max-h-24 overflow-y-auto">
+                        {activeExpense.participants.map((p: Participant, idx: number) => (
+                          <div key={idx} className="flex justify-between text-[10px] bg-[rgba(0,0,0,0.2)] px-2 py-1 rounded">
+                            <span className="text-[#94a3b8]">{p.name}</span>
+                            <span className="text-[#e2e8f0] font-bold">
+                              {p.share_pct !== null ? `${p.share_pct}%` : `${activeAnomaly.expense_currency} ${p.share_amount}`}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Detector Explanation */}
+                  <div className="border-t border-[rgba(255,79,216,0.08)] pt-3">
+                    <span className="text-[10px] text-[#64748b] font-bold uppercase tracking-wider" style={{ fontFamily: 'Orbitron, sans-serif' }}>Detector Note</span>
+                    <p className="text-[11px] text-[#64748b] leading-relaxed mt-1">{activeAnomaly.description}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-20 text-center text-xs text-[#475569]">
+                  Select an issue from the ledger to load record attributes.
+                </div>
+              )}
+            </div>
+            
+            {activeAnomaly && (
+              <button
+                onClick={() => explain(activeAnomaly.id)}
+                className="w-full mt-4 py-2 rounded-xl text-xs font-bold btn-primary"
+                style={{ color: 'white', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.08em' }}
+              >
+                RE-RUN AI AUDIT
+              </button>
+            )}
+          </HolographicPanel>
+        </div>
+
+        {/* Right Column: AI Explanation Console (3 cols) */}
+        <div className="col-span-3 flex flex-col">
           <AIConsole
             explanation={explanation}
             loading={aiLoading}
-            anomalyLabel={activeAnomaly ? `${activeAnomaly.anomaly_type.replace(/_/g, ' ')} · ${activeAnomaly.severity}` : undefined}
+            anomalyLabel={activeAnomaly ? `${TYPE_LABELS[activeAnomaly.anomaly_type]} · ${activeAnomaly.severity}` : undefined}
           />
-
-          {/* Engineering decision note */}
-          <HolographicPanel id="panel-decision" glowColor="#9d4edd">
-            <div className="flex items-start gap-3">
-              <div className="shrink-0 mt-0.5">
-                <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'rgba(157,78,221,0.15)', border: '1px solid rgba(157,78,221,0.3)' }}>
-                  <span className="text-[10px] font-bold" style={{ color: '#9d4edd' }}>ENG</span>
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] font-bold mb-1" style={{ color: '#9d4edd', fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.08em' }}>
-                  ENGINEERING DECISION: Duplicate Detection
-                </div>
-                <p className="text-[11px] leading-relaxed" style={{ color: '#475569' }}>
-                  Duplicates are <span style={{ color: '#e2e8f0' }}>flagged for manual review</span> rather than auto-rejected.
-                  High-confidence duplicate detection (same amount + date + payer) can still produce false positives —
-                  for example, a weekly recurring expense or two people paying the same vendor on the same day.
-                  Automated deletion would cause data loss; human confirmation is the safer default.
-                </p>
-              </div>
-            </div>
-          </HolographicPanel>
         </div>
       </div>
+
+      {/* Bottom Row: Engineering Decision Panel (full width) */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
+        <HolographicPanel id="panel-decision-refactored" glowColor="#b84dff" className="p-5">
+          <div className="title-section text-[#b84dff] mb-3" style={{ fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.05em' }}>
+            ENGINEERING DECISION: Duplicate & Anomaly Processing Strategy
+          </div>
+          <div className="grid grid-cols-4 gap-6 text-[11px]">
+            <div>
+              <span className="font-bold text-[#e2e8f0] uppercase tracking-wider block mb-1">Decision</span>
+              <p className="text-[#64748b] leading-relaxed">
+                Duplicates are flagged for manual confirm rather than auto-deleted. Anomaly threshold limits are audit-only.
+              </p>
+            </div>
+            <div>
+              <span className="font-bold text-[#e2e8f0] uppercase tracking-wider block mb-1">Reason</span>
+              <p className="text-[#64748b] leading-relaxed">
+                Legitimate overlapping expenses exist (recurring SaaS, separate orders from same vendor, back-to-back client travel).
+              </p>
+            </div>
+            <div>
+              <span className="font-bold text-[#e2e8f0] uppercase tracking-wider block mb-1">Tradeoffs</span>
+              <p className="text-[#64748b] leading-relaxed">
+                Requires one additional click by the reviewer, but eliminates the risk of silent data loss during file ingestion.
+              </p>
+            </div>
+            <div>
+              <span className="font-bold text-[#e2e8f0] uppercase tracking-wider block mb-1">Chosen Action</span>
+              <p className="text-[#64748b] leading-relaxed">
+                Isolate potential duplicates, render clear explanations with 5-transaction contexts, and provide a single-click resolution.
+              </p>
+            </div>
+          </div>
+        </HolographicPanel>
+      </motion.div>
     </div>
   );
 }
