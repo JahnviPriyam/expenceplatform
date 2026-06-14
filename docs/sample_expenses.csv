@@ -1,0 +1,47 @@
+description,amount,currency,date,payer,category,participants,split_type,notes
+Pizza Friday,1200,INR,2024-06-01,Alice,Food,Alice;Bob;Charlie,equal,Team lunch
+Cab to Airport,850,INR,2024-06-01,Bob,Travel,Bob;Alice,equal,
+Hotel Stay Mumbai,8500,INR,2024-06-02,Alice,Stay,Alice;Bob;Charlie,equal,3 nights
+Grocery DMart,2105,,2024-06-03,Alice,Groceries,Alice;Bob,equal,Missing currency
+Pizza Friday,1200,INR,2024-06-01,Alice,Food,Alice;Bob;Charlie,equal,Duplicate row
+Conference Lunch,3400,INR,2024-06-04,Charlie,Food,Charlie;Alice;Bob;Dave,equal,
+Uber Ride,320,INR,2024-06-04,Bob,Travel,Bob,equal,Single participant
+Flight Tickets,24000,INR,2024-06-05,Alice,Travel,Alice;Bob;Charlie,equal,Unusual amount
+Team Dinner,4200,INR,2024-06-05,,Food,Alice;Bob;Charlie;Dave,equal,Missing payer
+Office Supplies,890,INR,2024-06-06,Charlie,Office,Charlie;Alice,equal,
+Settlement - Bob to Alice,3200,INR,2024-06-06,Bob,Settlement,,equal,Bob reimburses Alice
+Internet Bill,1499,INR,2024-06-07,Alice,Utilities,Alice;Bob,equal,
+Stationary,450,INR,2024-06-07,Dave,Office,Dave;Charlie,equal,
+Movie Tickets,1800,INR,2024-06-08,Bob,Entertainment,Bob;Alice;Charlie,percentage,
+Lunch Meeting,2600,INR,2024-06-08,Alice,Food,Alice;Bob;Charlie;Dave,equal,
+Weekend Brunch,1950,INR,2024-06-09,Charlie,Food,Charlie;Alice,equal,
+Parking Fee,200,INR,2024-06-09,Bob,Travel,Bob,equal,
+Cloud Storage,649,USD,2024-06-10,Alice,Software,Alice;Bob;Charlie,equal,USD expense
+Dinner Party,6800,INR,2024-06-10,,Entertainment,Alice;Bob;Charlie;Dave;Eve,equal,Missing payer
+Taxi Home,480,INR,2024-06-10,Dave,Travel,Dave,equal,
+Gym Membership,2000,INR,2024-06-11,Alice,Health,Alice,equal,
+Cafe Meetup,890,INR,2024-06-11,Bob,Food,Bob;Charlie,equal,
+Whiteboard Markers,350,INR,2024-06-11,Charlie,Office,Charlie;Dave,equal,
+Data Charges,999,INR,2024-06-12,Alice,Utilities,Alice;Bob,equal,
+Team Outing,12000,INR,2024-06-12,Alice,Entertainment,Alice;Bob;Charlie;Dave;Eve,equal,Large amount
+Cab Ride,320,INR,2024-06-04,Bob,Travel,Bob,equal,Potential duplicate
+Power Bank,1299,INR,2024-06-13,Dave,Electronics,Dave;Charlie,equal,
+Water Bottles,180,INR,2024-06-13,Bob,Groceries,Bob;Alice,equal,
+Conference Fee,5000,INR,2024-06-14,Alice,Professional,Alice;Bob,equal,
+Printer Paper,560,INR,2024-06-14,Charlie,Office,Charlie,equal,
+Snacks,430,INR,2024-06-15,Dave,Food,Dave;Charlie;Bob,equal,
+Monthly Rent Share,15000,INR,2024-06-15,Alice,Rent,Alice;Bob;Charlie,equal,
+Electricity Bill,2240,INR,2024-06-15,Bob,Utilities,Bob;Alice;Charlie,equal,
+Sports Shoes,4500,INR,2024-06-16,Charlie,Personal,Charlie,equal,
+Team Lunch,2800,INR,2024-06-16,Alice,Food,Alice;Bob;Charlie;Dave,equal,
+Spotify,169,,2024-06-16,Bob,Entertainment,Bob,equal,Missing currency
+Zoom Premium,1320,USD,2024-06-17,Alice,Software,Alice;Bob;Charlie,equal,
+Cab to Station,390,INR,2024-06-17,Dave,Travel,Dave;Charlie,equal,
+Coffee Run,640,INR,2024-06-18,Bob,Food,Bob;Alice;Charlie,equal,
+Laptop Charger,2200,INR,2024-06-18,Charlie,Electronics,Charlie;Alice,percentage,Split sums to 110%;invalid
+Birthday Cake,1500,INR,2026-12-31,Alice,Entertainment,Alice;Bob;Charlie,equal,Future date
+Tea Supplies,280,INR,2024-06-19,Dave,Groceries,Dave;Bob,equal,
+QuickBooks,2499,INR,2024-06-19,Alice,Software,Alice;Bob,equal,
+Dinner at Home,1100,INR,2024-06-20,Bob,Food,Bob;Alice,equal,
+Flower Delivery,750,INR,2024-06-20,Charlie,Gifts,Charlie,equal,
+Magazine,200,INR,2024-06-20,Dave,Personal,Dave,equal,
