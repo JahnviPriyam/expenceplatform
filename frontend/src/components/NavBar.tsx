@@ -42,7 +42,7 @@ export default function NavBar() {
       initial={{ x: -80, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="fixed left-0 top-0 h-full w-64 z-40 flex flex-col"
+      className="fixed left-0 top-0 h-full w-[240px] z-40 flex flex-col"
       style={{
         background: 'rgba(8,9,20,0.95)',
         backdropFilter: 'blur(20px)',

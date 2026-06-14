@@ -5,7 +5,7 @@ export default function Layout() {
   return (
     <div className="flex min-h-screen bg-space grid-bg">
       <NavBar />
-      <main className="flex-1 ml-64 overflow-auto">
+      <main className="flex-1 ml-[240px] overflow-auto">
         <Outlet />
       </main>
     </div>
