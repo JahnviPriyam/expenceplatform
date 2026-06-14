@@ -23,7 +23,7 @@ export function useDashboardStats() {
   return { stats, loading, error, refetch: fetchStats };
 }
 
-export function useAnomalies(severityFilter?: string) {
+export function useAnomalies(severityFilter?: string, importBatchId?: number) {
   const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +31,9 @@ export function useAnomalies(severityFilter?: string) {
   const fetch = useCallback(async () => {
     try {
       setLoading(true);
-      const params = severityFilter ? { severity: severityFilter } : {};
+      const params: any = {};
+      if (severityFilter) params.severity = severityFilter;
+      if (importBatchId) params.import_batch = importBatchId;
       const { data } = await api.get<PaginatedResponse<Anomaly>>('/anomalies/', { params });
       setAnomalies(data.results);
     } catch (e: any) {
@@ -39,7 +41,7 @@ export function useAnomalies(severityFilter?: string) {
     } finally {
       setLoading(false);
     }
-  }, [severityFilter]);
+  }, [severityFilter, importBatchId]);
 
   useEffect(() => { fetch(); }, [fetch]);
   return { anomalies, loading, error, refetch: fetch };

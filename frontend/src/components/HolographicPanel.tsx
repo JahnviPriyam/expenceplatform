@@ -7,10 +7,11 @@ interface HolographicPanelProps {
   glowColor?: string;
   id?: string;
   noPad?: boolean;
+  style?: React.CSSProperties;
 }
 
 export default function HolographicPanel({
-  children, className = '', glowColor = '#00f0ff', id, noPad = false
+  children, className = '', glowColor = '#ff4fd8', id, noPad = false, style = {}
 }: HolographicPanelProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState(false);
@@ -45,6 +46,7 @@ export default function HolographicPanel({
         rotateY: hovered ? rotateY : 0,
         transformStyle: 'preserve-3d',
         transformOrigin: 'center center',
+        ...style
       }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       className={`glass-panel relative overflow-hidden ${noPad ? '' : 'p-5'} ${className}`}

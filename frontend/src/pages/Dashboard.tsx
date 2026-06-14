@@ -2,10 +2,10 @@ import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
-  Upload, AlertTriangle, ArrowRight, Shield, Layers, CheckCircle, Cpu, Calendar,
+  Upload, AlertTriangle, ArrowRight, Shield, CheckCircle, Cpu, Calendar,
   Zap, ChevronRight, FileText
 } from 'lucide-react';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import QuantumCore from '../components/QuantumCore';
 import HolographicPanel from '../components/HolographicPanel';
 import { useDashboardStats, useExpenses, useAnomalies } from '../hooks/useData';
@@ -29,12 +29,6 @@ function deriveCoreMetrics(stats: ReturnType<typeof useDashboardStats>['stats'])
 
 const CAT_COLORS = ['#ff4fd8', '#b84dff', '#ff6ec7', '#00aaff', '#00ff88'];
 const CURRENCY_COLORS = ['#ff4fd8', '#b84dff', '#ff6ec7'];
-const ANOMALY_COLORS = {
-  CRITICAL: '#ff3d3d',
-  HIGH:     '#ff8c00',
-  MEDIUM:   '#b84dff',
-  LOW:      '#00aaff',
-};
 
 const SEVERITY_COLORS: Record<string, string> = {
   CRITICAL: '#ff3d3d',

@@ -84,6 +84,9 @@ export interface DashboardStats {
   high_anomalies: number;
   medium_anomalies: number;
   low_anomalies: number;
+  duplicate_count: number;
+  missing_field_count: number;
+  settlement_count: number;
   integrity_score: number;
   grade: string;
   currency_distribution: Record<string, number>;
